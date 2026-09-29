@@ -10,11 +10,27 @@ Scripts intentionally remain ordered classic scripts sharing one global lexical 
 
 The automated tests execute files separately in their actual load order with browser API stubs. They exercise all six previews and race starts, pause/resume timing, early exit, repeated starts, equivalent movement at 30/60/144 Hz, and C1 completing each enlarged circuit. It is not a replacement for a complete human playthrough or hardware gamepad/audio testing.
 
+## C1 Expert controller
+
+C1 follows a target interpolated along the spline at a distance measured in world units, instead of a fixed number of spline samples. Pure-pursuit steering translates heading error and speed into a turn command. A forward curvature scan estimates corner speed from steering capacity, then applies a braking-distance envelope before the turn. Throttle includes friction compensation so C1 maintains pace through straights and gentle bends. Large heading errors temporarily reduce target speed to recover after contact.
+
+Both cars share the same top speed of 6.42 units/tick. AI-only tuning adds 35% acceleration, 50% braking and 65% steering authority relative to the player's balanced vehicle. It still uses vehicle physics, collisions and off-road penalties; it does not teleport or modify player results.
+
+`tests/ai.test.js` checks pace, staying on-road and recovery from a 90-unit sideways displacement plus a 1.2-radian heading deflection on every circuit. The simulation helper executes the production controller and physics directly.
+
 ## Pause lifecycle
 
 The race owns a single animation-frame handle. Pause cancels it, clears held keyboard input, silences the engine and opens a native modal dialog with contained keyboard focus. Resume shifts race and active lap start timestamps by the paused duration and resets the frame timestamp, preserving car state without simulating paused time. Escape, a visible Pause button, window blur and tab hiding can pause the race. Ending early cancels the loop, discards the pending submission and returns to the circuit menu.
 
 Vehicle reset also clears its lap-crossing flag, preventing a restarted race from inheriting permission to cross the finish line. Existing leaderboard scores are not reset or rewritten by balancing; old and new lap times are not directly comparable.
+
+## Controller menu input
+
+`ControllerMenus` polls independently of the race animation so controls work on the title screen, in the pause dialog and after a race. It shares gamepad discovery with driving input and supports any populated controller slot. Standard-mapped button indices are used: A/Cross (0), B/Circle (1), Start/Options (9), D-pad (12–15).
+
+Menu activation is edge-triggered. Directional input uses a 0.55 stick deadzone, a 350 ms initial repeat delay and 140 ms subsequent repeats. Polling observes button releases while racing or unfocused, preventing held throttle from activating a results button. Hidden/disabled controls are excluded; duplicate-name confirmation and the native pause dialog restrict navigation to their controls. Pointer or keyboard activity clears the controller focus outline. Browser focus loss still invokes the existing race pause behavior.
+
+Tests supply synthetic gamepad snapshots to cover grid movement, repeating directions, starting/pausing/resuming/quitting, results actions, duplicate-name cancellation, held-button screen transitions, background windows and disconnected controllers. Physical-controller mappings and browser-specific gamepad permissions still require hardware testing.
 
 ## Backend contract
 

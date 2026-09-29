@@ -34,8 +34,9 @@
 
       <div class="instructions">
         CONTROLS: Keyboard [W/Up: Throttle | S/Down: Brake/Reverse | A/D/Left/Right: Steer | Space: Handbrake | Esc: Pause]<br>
-        GAMEPAD: [Left Stick / D-Pad: Steer | RT / A: Gas | LT / X: Brake]<br>
-        OPPONENT: C1 (Curvature-Predictive Autonomous Racer with Apex Trail-Braking).
+        GAMEPAD: [Left Stick: Steer | RT / A: Gas | LT / X: Brake | Start / Options: Pause]<br>
+        MENUS: [D-Pad / Stick: Navigate | A / Cross: Select | B / Circle: Back | Start / Options: Race]<br>
+        OPPONENT: C1 EXPERT (Predictive corner braking, precision steering, enhanced performance).
       </div>
     </div>
   </div>
@@ -57,7 +58,7 @@
       <p id="pauseDescription" class="subtitle">Take a breather. The cars and race clock are paused.</p>
       <button id="btnResumeRace" class="btn-main" autofocus>RESUME RACE</button>
       <button id="btnQuitRace" class="btn-main btn-secondary">END RACE &amp; RETURN TO MENU</button>
-      <p class="status-text">Esc to resume. Ending early won’t save a time.</p>
+      <p class="status-text">Esc / Start / B to resume. D-Pad to navigate, A to select. Ending early won’t save a time.</p>
     </dialog>
   </div>
 
@@ -101,6 +102,7 @@
         </table>
       </div>
 
+      <p class="status-text">CONTROLLER: D-Pad / Stick to navigate, A to select, B for menu, Start to retry. Enter your name with a keyboard.</p>
       <div class="status-text" id="backendStatus">BACKEND: CHECKING LOCAL SERVER (PORT 3000)...</div>
 
       <div style="display: flex; gap: 8px; margin-top: 12px;">
@@ -117,6 +119,7 @@
   <script src="js/vehicle.js"></script>
   <script src="js/race.js"></script>
   <script src="js/leaderboard.js"></script>
+  <script src="js/controller-menu.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

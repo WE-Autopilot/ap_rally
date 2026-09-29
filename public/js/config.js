@@ -14,3 +14,10 @@
       speedScale: 0.6,
       steeringScale: 0.8
     });
+
+    // Expert opponent advantages; player handling remains at GAME_BALANCE.
+    const C1_TUNING = Object.freeze({
+      accelerationMultiplier: 1.35,
+      brakingMultiplier: 1.5,
+      steeringMultiplier: 1.65
+    });

@@ -2,7 +2,7 @@
 
 A browser racing game for the university club: six circuits, keyboard/gamepad controls, and the autonomous C1 opponent.
 
-Circuits are scaled to 150% of the original size with 140% road width. Both cars have 60% of their original top speed and acceleration, with gentler steering. Physics runs at a fixed 60 updates per second regardless of display refresh rate. Tuning lives in `public/js/config.js`.
+Circuits are scaled to 150% of the original size with 140% road width. The player has 60% of the original top speed and acceleration, with gentler steering. C1 Expert uses distance-based pursuit and predictive braking, with the same top speed as the player, plus stronger acceleration, braking and steering. Physics runs at a fixed 60 updates per second regardless of display refresh rate. Player/track tuning and C1-specific performance multipliers live in `public/js/config.js`.
 
 Press **Escape** or click **Pause [Esc]** during a race to pause. Use Escape or Resume Race to continue; End Race returns to circuit selection without saving an unfinished time. Switching tabs/windows also pauses the race. Paused time is excluded from race and lap clocks. Existing leaderboard records are retained; scores from the old balance are not directly comparable.
 
@@ -22,6 +22,17 @@ npm test         # regression, API, database and browser-script smoke checks
 npm run dev      # restart the backend when its source changes; refresh browser for frontend edits
 ```
 
+## Controller menus
+
+Use a browser-recognized standard gamepad. Press a button after connecting it so the browser exposes it to the game.
+
+- D-pad or left stick: navigate menus (circuit previews update as you move).
+- A / Cross: select the focused control.
+- B / Circle: resume from pause, cancel a duplicate-name prompt, or return from results to the circuit menu.
+- Start / Options: start the selected circuit, pause/resume a race, or retry from results.
+
+Focused controls have a bold outline. Username entry still uses a keyboard. Held buttons do not repeatedly activate actions or carry a throttle press into the results menu. Disconnecting removes the controller highlight; keyboard and mouse remain available.
+
 ## Repository layout
 
 ```text
@@ -31,7 +42,8 @@ public/
   js/config.js               Original API URL and connection state
   js/tracks.js               Circuit data, spline generation and track state
   js/audio.js                Synthesized sound
-  js/input.js                Keyboard and gamepad input
+  js/input.js                Keyboard and gamepad driving input
+  js/controller-menu.js      Controller focus, menu navigation and pause controls
   js/vehicle.js              Vehicle physics, C1 driving and collisions
   js/race.js                 Race lifecycle, canvas rendering and HUD
   js/leaderboard.js          API client, local fallback and leaderboard rendering

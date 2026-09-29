@@ -1,3 +1,12 @@
+    function getConnectedGamepad() {
+      try {
+        return Array.from(navigator.getGamepads ? navigator.getGamepads() : [])
+          .find(pad => pad && pad.connected !== false) || null;
+      } catch {
+        return null;
+      }
+    }
+
     // Input Manager (Keyboard + Gamepad)
     class InputManager {
       constructor() {
@@ -24,8 +33,7 @@
         if (this.keys['Space']) handbrake = true;
 
         // Controller support
-        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-        const gp = gamepads[0] || gamepads[1];
+        const gp = getConnectedGamepad();
         if (gp) {
           // Axis 0 = Left Stick Horizontal
           if (Math.abs(gp.axes[0]) > 0.15) steer = gp.axes[0];

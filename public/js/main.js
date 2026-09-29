@@ -83,3 +83,6 @@
     // Init
     drawPreview(0);
     fetchLeaderboardFromBackend(0);
+
+    const controllerMenus = new ControllerMenus();
+    controllerMenus.start();

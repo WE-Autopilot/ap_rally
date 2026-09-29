@@ -19,12 +19,17 @@
         this.radius = 12;
 
         // Physics parameters
-        this.maxSpeed = (this.isAI ? 10.9 : 10.7) * GAME_BALANCE.speedScale;
+        this.maxSpeed = 10.7 * GAME_BALANCE.speedScale;
         this.accel = 0.28 * GAME_BALANCE.speedScale;
         this.brake = 0.45 * GAME_BALANCE.speedScale;
         this.friction = 0.982;
         this.turnRate = 0.055 * GAME_BALANCE.steeringScale;
         this.offRoadFriction = 0.90;
+        if (this.isAI) {
+          this.accel *= C1_TUNING.accelerationMultiplier;
+          this.brake *= C1_TUNING.brakingMultiplier;
+          this.turnRate *= C1_TUNING.steeringMultiplier;
+        }
 
         // Lap progression
         this.currentSplineIndex = 0;
@@ -124,32 +129,55 @@
         }
       }
 
-      // Apex-trail braking, curvature-predictive AI algorithm for C1
+      // Distance-based pursuit with a braking envelope for upcoming corners.
       computeAIInput(spline) {
         const len = spline.length;
-        // Lookahead dynamic anchor
-        const lookahead = Math.floor(10 + (this.speed / this.maxSpeed) * 16);
-        const targetIdx = (this.currentSplineIndex + lookahead) % len;
-        const target = spline[targetIdx];
+        this.getDistanceFromCenterline(spline);
+        const lookahead = 32 + Math.abs(this.speed) * 6;
+        const brakingDeceleration = this.brake * 0.85;
+        const horizon = lookahead + this.maxSpeed ** 2 / (2 * brakingDeceleration) + 60;
+        let target = spline[this.currentSplineIndex];
+        let distance = 0;
+        let targetFound = false;
+        let targetSpeed = this.maxSpeed;
 
-        // Measure track curvature ahead (difference in angle between lookahead point and deeper curve)
-        const deepIdx = (targetIdx + 12) % len;
-        const deepTarget = spline[deepIdx];
-        const headingToTarget = Math.atan2(target.y - this.y, target.x - this.x);
-        const headingToDeep = Math.atan2(deepTarget.y - target.y, deepTarget.x - target.x);
-        let cornerSharpness = Math.abs(Math.atan2(Math.sin(headingToDeep - headingToTarget), Math.cos(headingToDeep - headingToTarget)));
+        for (let step = 0; step < len && distance < horizon; step++) {
+          const index = (this.currentSplineIndex + step) % len;
+          const previous = spline[(index - 1 + len) % len];
+          const point = spline[index];
+          const next = spline[(index + 1) % len];
+          const incoming = Math.hypot(point.x - previous.x, point.y - previous.y);
+          const outgoing = Math.hypot(next.x - point.x, next.y - point.y);
+          const headingIn = Math.atan2(point.y - previous.y, point.x - previous.x);
+          const headingOut = Math.atan2(next.y - point.y, next.x - point.x);
+          const bend = Math.abs(Math.atan2(Math.sin(headingOut - headingIn), Math.cos(headingOut - headingIn)));
+          const curvature = bend / Math.max((incoming + outgoing) / 2, 0.001);
+          const cornerSpeed = Math.min(this.maxSpeed, this.turnRate * 0.82 / Math.max(curvature, 0.00001));
+          // Brake early enough to reach each corner's steering-limited speed.
+          const availableDistance = Math.max(0, distance - lookahead * 0.5);
+          targetSpeed = Math.min(targetSpeed, Math.sqrt(cornerSpeed ** 2 + 2 * brakingDeceleration * availableDistance));
 
-        let diffAngle = Math.atan2(Math.sin(headingToTarget - this.angle), Math.cos(headingToTarget - this.angle));
-        let steer = Math.max(-1, Math.min(1, diffAngle * 3.5));
-
-        // Trail brake before sharp corners, full throttle on straights
-        let throttle = 1.0;
-        if (cornerSharpness > 0.45 && this.speed > 5.5 * GAME_BALANCE.speedScale) {
-          throttle = -0.6; // Heavy braking into hairpin apex
-        } else if (Math.abs(diffAngle) > 0.5 && this.speed > 7.0 * GAME_BALANCE.speedScale) {
-          throttle = 0.1; // Gentle lift off
+          if (!targetFound && distance + outgoing >= lookahead) {
+            const fraction = (lookahead - distance) / Math.max(outgoing, 0.001);
+            target = { x: point.x + (next.x - point.x) * fraction, y: point.y + (next.y - point.y) * fraction };
+            targetFound = true;
+          }
+          distance += outgoing;
         }
 
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const headingError = Math.atan2(Math.sin(Math.atan2(dy, dx) - this.angle), Math.cos(Math.atan2(dy, dx) - this.angle));
+        const pursuitCurvature = 2 * Math.sin(headingError) / Math.max(Math.hypot(dx, dy), 1);
+        const steer = Math.max(-1, Math.min(1, pursuitCurvature * Math.max(Math.abs(this.speed), 2) / this.turnRate));
+        // Recover after contact without charging away from the track.
+        targetSpeed = Math.min(targetSpeed, this.turnRate * 0.9 / Math.max(Math.abs(pursuitCurvature), 0.00001));
+        if (Math.abs(headingError) > 1) targetSpeed = Math.min(targetSpeed, 2);
+        targetSpeed = Math.max(1.2, targetSpeed);
+        const speedError = targetSpeed - this.speed;
+        const throttle = speedError < -0.15
+          ? Math.max(-1, speedError / this.brake)
+          : Math.max(0, Math.min(1, (targetSpeed * (1 / this.friction - 1) + speedError * 0.5) / this.accel));
         return { steer, throttle, handbrake: false };
       }
     }

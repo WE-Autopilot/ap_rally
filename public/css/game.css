@@ -249,3 +249,9 @@
       color: #666666;
       margin-top: 6px;
     }
+
+    .controller-focus {
+      outline: 3px solid #111111;
+      outline-offset: 4px;
+      box-shadow: 0 0 0 2px #ffffff;
+    }

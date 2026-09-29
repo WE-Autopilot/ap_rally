@@ -30,6 +30,7 @@ function createGame() {
       if (!listeners.has(name)) listeners.set(name, []);
       listeners.get(name).push(handler);
     } },
+    setInterval() {},
     navigator: {}, performance: { now: () => now },
     requestAnimationFrame(callback) { frames.set(++nextFrame, callback); return nextFrame; },
     cancelAnimationFrame(id) { frames.delete(id); },
@@ -61,7 +62,10 @@ test('all six larger circuits initialize and both cars have lower speed limits',
   assert.equal(game.run('CIRCUITS[0].nodes[0].x'), 450);
   assert.ok(Math.abs(game.run('CIRCUITS[0].roadWidth') - 126) < 1e-9);
   assert.ok(Math.abs(game.run('player.maxSpeed') - 6.42) < 1e-9);
-  assert.ok(Math.abs(game.run('botC1.maxSpeed') - 6.54) < 1e-9);
+  assert.equal(game.run('botC1.maxSpeed'), game.run('player.maxSpeed'));
+  assert.ok(Math.abs(game.run('player.accel') - 0.168) < 1e-9);
+  assert.ok(Math.abs(game.run('player.brake') - 0.27) < 1e-9);
+  assert.ok(Math.abs(game.run('player.turnRate') - 0.044) < 1e-9);
   for (let i = 0; i < 6; i++) {
     game.run(`drawPreview(${i}); currentTrackIdx = ${i}; startRace();`);
     assert.equal(game.frames.size, 1);
