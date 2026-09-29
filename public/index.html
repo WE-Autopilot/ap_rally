@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AUTOPILOT</title>
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+
+  <!-- 1. START SCREEN -->
+  <div id="startScreen" class="screen active">
+    <div class="border-box">
+      <h1>Autopilot</h1>
+      <div class="subtitle">2D Formula Time Trial. You vs Autonomous Racer C1.</div>
+
+      <div class="section-title">Circuit Schematic Preview</div>
+      <div class="preview-container">
+        <canvas id="previewCanvas" width="600" height="200"></canvas>
+        <div class="preview-info" id="previewMeta">SELECT A CIRCUIT</div>
+      </div>
+
+      <div class="section-title">Select Circuit</div>
+      <div class="grid-buttons" id="trackSelector">
+        <button class="track-btn selected" data-track="0">1. Grand Hairpin</button>
+        <button class="track-btn" data-track="1">2. Figure Eight</button>
+        <button class="track-btn" data-track="2">3. Omega Hairpin</button>
+        <button class="track-btn" data-track="3">4. Suzuka S-Complex</button>
+        <button class="track-btn" data-track="4">5. Twin Helix</button>
+        <button class="track-btn" data-track="5">6. The Colosseum</button>
+      </div>
+
+      <button id="btnStartGame" class="btn-main">START RACE</button>
+
+      <div class="instructions">
+        CONTROLS: Keyboard [W/Up: Throttle | S/Down: Brake/Reverse | A/D/Left/Right: Steer | Space: Handbrake]<br>
+        GAMEPAD: [Left Stick / D-Pad: Steer | RT / A: Gas | LT / X: Brake]<br>
+        OPPONENT: C1 (Curvature-Predictive Autonomous Racer with Apex Trail-Braking).
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. GAME SCREEN -->
+  <div id="gameScreen" class="screen">
+    <div class="hud">
+      <div class="hud-row"><span>TRACK:</span><span id="hudTrack" class="hud-val">1. Grand Hairpin</span></div>
+      <div class="hud-row"><span>LAP:</span><span id="hudLap" class="hud-val">1 / 2</span></div>
+      <div class="hud-row"><span>POS:</span><span id="hudPos" class="hud-val">P1</span></div>
+      <div class="hud-row"><span>TIME:</span><span id="hudTime" class="hud-val">00:00.000</span></div>
+      <div class="hud-row"><span>BEST:</span><span id="hudBest" class="hud-val">--:--.---</span></div>
+      <div class="hud-row"><span>SPEED:</span><span id="hudSpeed" class="hud-val">0 KM/H</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+  </div>
+
+  <!-- 3. LEADERBOARD SCREEN -->
+  <div id="leaderboardScreen" class="screen">
+    <div class="border-box">
+      <h1 id="lbResultTitle">RACE COMPLETE</h1>
+      <div class="subtitle" id="lbResultSummary">Finish time logged. Set your name on the record board.</div>
+
+      <!-- Submit Section -->
+      <div id="submitSection">
+        <div class="input-row">
+          <input type="text" id="usernameInput" maxlength="16" placeholder="ENTER USERNAME (MAX 16 CHARS)" />
+          <button id="btnSubmitTime" style="padding: 10px 16px;">SAVE TIME</button>
+        </div>
+
+        <div id="collisionWarning" class="warning-box">
+          <div id="collisionText">Username already exists. Are you the same player?</div>
+          <div class="warning-btns">
+            <button id="btnConfirmOverwrite">YES, UPDATE TIME</button>
+            <button id="btnCancelOverwrite">NO, ENTER NEW NAME</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title" id="lbTableTitle">LEADERBOARD - GRAND HAIRPIN</div>
+      
+      <div class="table-container">
+        <table id="leaderboardTable">
+          <thead>
+            <tr>
+              <th style="width: 15%;">POS</th>
+              <th style="width: 45%;">DRIVER</th>
+              <th style="width: 25%;">TIME</th>
+              <th style="width: 15%;">GAP</th>
+            </tr>
+          </thead>
+          <tbody id="lbTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="status-text" id="backendStatus">BACKEND: CHECKING LOCAL SERVER (PORT 3000)...</div>
+
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button id="btnRestartRace" class="btn-main" style="margin-top:0; flex:1;">RETRY CIRCUIT</button>
+        <button id="btnReturnMenu" class="btn-main" style="margin-top:0; flex:1; background:#ffffff; color:#111111;">CIRCUIT MENU</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/tracks.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/vehicle.js"></script>
+  <script src="js/race.js"></script>
+  <script src="js/leaderboard.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

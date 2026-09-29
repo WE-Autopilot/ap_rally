@@ -1,0 +1,282 @@
+    /* ==========================================================
+       GAME LIFECYCLE & RENDERING
+       ========================================================== */
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const previewCanvas = document.getElementById('previewCanvas');
+    const pctx = previewCanvas.getContext('2d');
+
+    const player = new Vehicle(false, "P1", "#111111");
+    const botC1 = new Vehicle(true, "C1", "#555555");
+
+    let isGameRunning = false;
+    let raceClockStart = 0;
+    let pendingPlayerEntry = null;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      drawPreview(currentTrackIdx);
+    });
+    resizeCanvas();
+
+    function drawPreview(trackIndex) {
+      const res = generateSpline(CIRCUITS[trackIndex].nodes, 20);
+      const pts = res.points;
+      const w = previewCanvas.width;
+      const h = previewCanvas.height;
+
+      pctx.fillStyle = '#fafafa';
+      pctx.fillRect(0, 0, w, h);
+
+      if (!pts.length) return;
+
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      pts.forEach(p => {
+        if (p.x < minX) minX = p.x;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.y > maxY) maxY = p.y;
+      });
+
+      const pad = 24;
+      const scaleX = (w - pad * 2) / (maxX - minX);
+      const scaleY = (h - pad * 2) / (maxY - minY);
+      const scale = Math.min(scaleX, scaleY);
+      const ox = (w - (maxX - minX) * scale) / 2 - minX * scale;
+      const oy = (h - (maxY - minY) * scale) / 2 - minY * scale;
+
+      // Track outline
+      pctx.beginPath();
+      pctx.lineWidth = 14;
+      pctx.strokeStyle = '#dddddd';
+      pts.forEach((p, idx) => {
+        const sx = p.x * scale + ox;
+        const sy = p.y * scale + oy;
+        if (idx === 0) pctx.moveTo(sx, sy);
+        else pctx.lineTo(sx, sy);
+      });
+      pctx.closePath();
+      pctx.stroke();
+
+      // Centerline
+      pctx.beginPath();
+      pctx.lineWidth = 1.5;
+      pctx.strokeStyle = '#111111';
+      pts.forEach((p, idx) => {
+        const sx = p.x * scale + ox;
+        const sy = p.y * scale + oy;
+        if (idx === 0) pctx.moveTo(sx, sy);
+        else pctx.lineTo(sx, sy);
+      });
+      pctx.closePath();
+      pctx.stroke();
+
+      // Start line mark
+      const startP = pts[0];
+      pctx.fillStyle = '#111111';
+      pctx.beginPath();
+      pctx.arc(startP.x * scale + ox, startP.y * scale + oy, 4, 0, Math.PI * 2);
+      pctx.fill();
+
+      document.getElementById('previewMeta').innerText =
+        `${CIRCUITS[trackIndex].name.toUpperCase()} | ${CIRCUITS[trackIndex].nodes.length} TURNS | ${CIRCUITS[trackIndex].laps} LAPS`;
+    }
+
+    function switchScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    function startRace() {
+      initTrack(currentTrackIdx);
+      const startP = trackSpline[0];
+      const nextP = trackSpline[2];
+      const initAngle = Math.atan2(nextP.y - startP.y, nextP.x - startP.x);
+
+      // Normal offset for grid positions
+      const nx = -Math.sin(initAngle);
+      const ny = Math.cos(initAngle);
+
+      player.reset();
+      player.x = startP.x + nx * 14;
+      player.y = startP.y + ny * 14;
+      player.angle = initAngle;
+
+      botC1.reset();
+      botC1.x = startP.x - nx * 14 - Math.cos(initAngle) * 20;
+      botC1.y = startP.y - ny * 14 - Math.sin(initAngle) * 20;
+      botC1.angle = initAngle;
+
+      raceClockStart = performance.now();
+      player.lapStartTime = raceClockStart;
+      botC1.lapStartTime = raceClockStart;
+
+      document.getElementById('hudTrack').innerText = CIRCUITS[currentTrackIdx].name;
+      switchScreen('gameScreen');
+      isGameRunning = true;
+      audio.init();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function formatTime(sec) {
+      if (!sec || isNaN(sec) || sec <= 0) return "--:--.---";
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      const ms = Math.floor((sec % 1) * 1000);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(3, '0')}`;
+    }
+
+    // Main Game Loop
+    function gameLoop(timestamp) {
+      if (!isGameRunning) return;
+
+      const pInput = input.getState();
+      const bInput = botC1.computeAIInput(trackSpline);
+
+      const rw = CIRCUITS[currentTrackIdx].roadWidth;
+      player.update(1 / 60, pInput, trackSpline, rw);
+      botC1.update(1 / 60, bInput, trackSpline, rw);
+
+      resolveCarCollision(player, botC1);
+      audio.updateEngine(player.speed, player.maxSpeed);
+
+      // Render world relative to Player camera
+      ctx.fillStyle = '#f2f2f2';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+
+      // 1. Render Tarmac Surface
+      ctx.beginPath();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = rw + 8;
+      ctx.strokeStyle = '#cccccc'; // Curbs edge
+      trackSpline.forEach((p, idx) => {
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.lineWidth = rw;
+      ctx.strokeStyle = '#ffffff'; // White track surface
+      trackSpline.forEach((p, idx) => {
+        if (idx === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+
+      // 2. Dashed centerline
+      ctx.setLineDash([12, 16]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#d0d0d0';
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // 3. Start/Finish Line
+      const sp = trackSpline[0];
+      const np = trackSpline[1];
+      const sa = Math.atan2(np.y - sp.y, np.x - sp.x) + Math.PI / 2;
+      ctx.beginPath();
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#111111';
+      ctx.moveTo(sp.x - Math.cos(sa) * (rw / 2), sp.y - Math.sin(sa) * (rw / 2));
+      ctx.lineTo(sp.x + Math.cos(sa) * (rw / 2), sp.y + Math.sin(sa) * (rw / 2));
+      ctx.stroke();
+
+      // 4. Render Vehicles
+      renderCar(botC1);
+      renderCar(player);
+
+      ctx.restore();
+
+      // HUD readout
+      const nowSec = (timestamp - raceClockStart) / 1000;
+      document.getElementById('hudTime').innerText = formatTime(nowSec);
+      document.getElementById('hudLap').innerText = `${Math.min(player.lap, CIRCUITS[currentTrackIdx].laps)} / ${CIRCUITS[currentTrackIdx].laps}`;
+      document.getElementById('hudSpeed').innerText = `${Math.floor(Math.abs(player.speed) * 20)} KM/H`;
+      document.getElementById('hudPos').innerText = (player.currentSplineIndex + (player.lap * trackSpline.length)) >=
+        (botC1.currentSplineIndex + (botC1.lap * trackSpline.length)) ? "P1" : "P2";
+
+      if (player.lapTimes.length > 0) {
+        document.getElementById('hudBest').innerText = formatTime(Math.min(...player.lapTimes));
+      }
+
+      // Check race end
+      if (player.raceFinished && botC1.raceFinished) {
+        endRace();
+        return;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function renderCar(car) {
+      ctx.save();
+      ctx.translate(car.x, car.y);
+      ctx.rotate(car.angle);
+
+      // Chassis
+      ctx.fillStyle = car.color;
+      ctx.fillRect(-car.length / 2, -car.width / 2, car.length, car.width);
+
+      // Driver cockpit indicator
+      ctx.fillStyle = car.color === '#111111' ? '#ffffff' : '#111111';
+      ctx.fillRect(-car.length * 0.1, -car.width * 0.28, car.length * 0.35, car.width * 0.56);
+
+      // Tires
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(-car.length * 0.45, -car.width * 0.55 - 2, 7, 3);
+      ctx.fillRect(-car.length * 0.45, car.width * 0.55 - 1, 7, 3);
+      ctx.fillRect(car.length * 0.25, -car.width * 0.55 - 2, 7, 3);
+      ctx.fillRect(car.length * 0.25, car.width * 0.55 - 1, 7, 3);
+
+      // Front wing highlight
+      ctx.fillRect(car.length * 0.45, -car.width * 0.5, 2, car.width);
+
+      ctx.restore();
+
+      // Car tag
+      ctx.save();
+      ctx.fillStyle = '#111111';
+      ctx.font = '10px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(car.label, car.x, car.y - 16);
+      ctx.restore();
+    }
+
+    function endRace() {
+      isGameRunning = false;
+      audio.stopEngine();
+
+      const playerWon = player.totalRaceTime <= botC1.totalRaceTime;
+      const gap = Math.abs(player.totalRaceTime - botC1.totalRaceTime);
+
+      document.getElementById('lbResultTitle').innerText = playerWon ? "VICTORY: P1 FINISH" : "C1 FINISHED FIRST";
+      document.getElementById('lbResultSummary').innerText =
+        `YOUR TIME: ${formatTime(player.totalRaceTime)} | C1 TIME: ${formatTime(botC1.totalRaceTime)} | GAP: ${gap.toFixed(3)}s`;
+
+      pendingPlayerEntry = {
+        trackIndex: currentTrackIdx,
+        time: player.totalRaceTime,
+        gap: (playerWon ? "-" : "+") + gap.toFixed(3) + "s",
+        date: new Date().toISOString()
+      };
+
+      document.getElementById('submitSection').style.display = 'block';
+      document.getElementById('collisionWarning').style.display = 'none';
+      document.getElementById('usernameInput').value = '';
+
+      switchScreen('leaderboardScreen');
+      loadLeaderboard(currentTrackIdx);
+    }
+

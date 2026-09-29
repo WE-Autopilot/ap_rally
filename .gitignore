@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+!.env.example
+data/*
+!data/.gitkeep
+leaderboard.json
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+coverage/
+.DS_Store
+*.log
