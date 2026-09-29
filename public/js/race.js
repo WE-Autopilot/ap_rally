@@ -147,7 +147,33 @@
       cancelAnimationFrame(animationFrameId);
       input.keys = {};
       audio.stopEngine();
+      setPauseControls(false);
       document.getElementById('pauseMenu').showModal();
+    }
+
+    function setPauseControls(visible) {
+      document.getElementById('pauseActions').hidden = visible;
+      document.getElementById('pauseControls').hidden = !visible;
+      document.getElementById('pauseTitle').textContent = visible ? 'CONTROLS' : 'RACE PAUSED';
+      document.getElementById('pauseDescription').textContent = visible
+        ? 'Keyboard and controller reference. The race remains paused.'
+        : 'Take a breather. The cars and race clock are paused.';
+    }
+
+    function showPauseControls() {
+      if (!isGamePaused) return;
+      setPauseControls(true);
+      document.getElementById('btnControlsBack').focus();
+    }
+
+    function backFromPauseMenu() {
+      if (!isGamePaused) return;
+      if (!document.getElementById('pauseControls').hidden) {
+        setPauseControls(false);
+        document.getElementById('btnShowControls').focus();
+      } else {
+        resumeRace();
+      }
     }
 
     function resumeRace() {

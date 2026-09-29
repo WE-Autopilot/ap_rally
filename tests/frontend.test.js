@@ -154,3 +154,27 @@ test('C1 still completes each enlarged circuit with the new speed and steering',
     assert.equal(game.run('botC1.raceFinished'), true, `Circuit ${track + 1}`);
   }
 });
+
+
+test('pause controls open and go back without resuming or advancing the race clock', () => {
+  const game = createGame();
+  game.run('startRace()');
+  game.key('Escape');
+  game.element('btnShowControls').handlers.click();
+  assert.equal(game.element('pauseControls').hidden, false);
+  assert.equal(game.element('pauseActions').hidden, true);
+  assert.equal(game.frames.size, 0);
+  game.setTime(5000);
+  game.key('Escape');
+  assert.equal(game.element('pauseControls').hidden, true);
+  assert.equal(game.run('isGamePaused'), true);
+  game.element('btnShowControls').handlers.click();
+  game.element('btnControlsBack').handlers.click();
+  assert.equal(game.run('isGamePaused'), true);
+  game.key('Escape');
+  assert.equal(game.run('isGamePaused'), false);
+  assert.equal(game.run('raceClockStart'), 5000);
+  game.key('Escape');
+  assert.equal(game.element('pauseActions').hidden, false);
+  assert.equal(game.element('pauseControls').hidden, true);
+});

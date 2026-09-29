@@ -2,15 +2,17 @@
     document.getElementById('btnPauseRace').addEventListener('click', pauseRace);
     document.getElementById('btnResumeRace').addEventListener('click', resumeRace);
     document.getElementById('btnQuitRace').addEventListener('click', quitRace);
+    document.getElementById('btnShowControls').addEventListener('click', showPauseControls);
+    document.getElementById('btnControlsBack').addEventListener('click', backFromPauseMenu);
     document.getElementById('pauseMenu').addEventListener('cancel', e => {
       e.preventDefault();
-      resumeRace();
+      backFromPauseMenu();
     });
     window.addEventListener('keydown', e => {
       if (e.code !== 'Escape' || !isGameRunning) return;
       e.preventDefault();
       if (e.repeat) return;
-      if (isGamePaused) resumeRace();
+      if (isGamePaused) backFromPauseMenu();
       else pauseRace();
     });
     window.addEventListener('blur', pauseRace);

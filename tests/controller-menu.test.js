@@ -31,13 +31,23 @@ function setup() {
     isGameRunning: false, isGamePaused: false,
     pauseRace() { context.isGamePaused = true; document.activeElement = nodes.get('btnResumeRace'); },
     resumeRace() { context.isGamePaused = false; },
+    backFromPauseMenu() {
+      if (nodes.get('btnControlsBack').visible) {
+        pause.children.forEach(item => { item.visible = item.id !== 'btnControlsBack'; });
+        nodes.get('btnShowControls').focus();
+      } else context.isGamePaused = false;
+    },
   });
   const tracks = Array.from({ length: 6 }, (_, i) => node('track' + i, ['track-btn', ...(i === 0 ? ['selected'] : [])]));
   const start = node('btnStartGame', [], () => { context.isGameRunning = true; });
   startScreen.children = [...tracks, start];
-  pause.children = [node('btnResumeRace', [], context.resumeRace), node('btnQuitRace', [], () => {
+  pause.children = [node('btnResumeRace', [], context.resumeRace), node('btnShowControls', [], () => {
+    pause.children.forEach(item => { item.visible = item.id === 'btnControlsBack'; });
+    nodes.get('btnControlsBack').focus();
+  }), node('btnQuitRace', [], () => {
     context.isGameRunning = false; context.isGamePaused = false; activeScope = startScreen;
-  })];
+  }), node('btnControlsBack', [], context.backFromPauseMenu)];
+  nodes.get('btnControlsBack').visible = false;
   results.children = [node('usernameInput'), node('btnSubmitTime'), node('btnRestartRace', [], () => { context.isGameRunning = true; }), node('btnReturnMenu', [], () => { activeScope = startScreen; })];
   warning.children = [node('btnConfirmOverwrite'), node('btnCancelOverwrite', [], () => { warning.visible = false; })];
   activeScope = startScreen;
@@ -82,6 +92,7 @@ test('Start pauses once, B resumes, and A can end a paused race', () => {
   game.release(); game.press(1);
   assert.equal(game.context.isGamePaused, false);
   game.release(); game.press(9); game.release(); game.press(13);
+  game.release(); game.press(13);
   assert.equal(game.document.activeElement.id, 'btnQuitRace');
   game.release(); game.press(0);
   assert.equal(game.context.isGameRunning, false);
@@ -117,4 +128,16 @@ test('stick deadzone, held-button transitions, background protection and disconn
   assert.equal(game.nodes.get('btnRestartRace').clicks, 0);
   game.disconnect();
   assert.equal(game.nodes.get('track1').classList.contains('controller-focus'), false);
+});
+
+
+test('controller opens Controls and B returns to pause without resuming', () => {
+  const game = setup();
+  game.press(9); game.release(); game.press(9); game.release();
+  game.press(13); game.release(); game.press(0);
+  assert.equal(game.document.activeElement.id, 'btnControlsBack');
+  game.release(); game.press(1);
+  assert.equal(game.context.isGamePaused, true);
+  assert.equal(game.document.activeElement.id, 'btnShowControls');
+  assert.equal(game.nodes.get('btnControlsBack').visible, false);
 });

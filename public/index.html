@@ -56,9 +56,34 @@
     <dialog id="pauseMenu" aria-labelledby="pauseTitle" aria-describedby="pauseDescription">
       <h1 id="pauseTitle">RACE PAUSED</h1>
       <p id="pauseDescription" class="subtitle">Take a breather. The cars and race clock are paused.</p>
-      <button id="btnResumeRace" class="btn-main" autofocus>RESUME RACE</button>
-      <button id="btnQuitRace" class="btn-main btn-secondary">END RACE &amp; RETURN TO MENU</button>
-      <p class="status-text">Esc / Start / B to resume. D-Pad to navigate, A to select. Ending early won’t save a time.</p>
+      <div id="pauseActions">
+        <button id="btnResumeRace" class="btn-main" autofocus>RESUME RACE</button>
+        <button id="btnShowControls" class="btn-main btn-secondary">CONTROLS</button>
+        <button id="btnQuitRace" class="btn-main btn-secondary">END RACE &amp; RETURN TO MENU</button>
+        <p class="status-text">Esc / Start / B to resume. D-Pad to navigate, A to select. Ending early won’t save a time.</p>
+      </div>
+      <div id="pauseControls" hidden>
+        <h2 class="section-title">Keyboard — Driving</h2>
+        <dl class="controls-list">
+          <dt>Accelerate</dt><dd>W / ↑</dd>
+          <dt>Brake / reverse</dt><dd>S / ↓</dd>
+          <dt>Steer</dt><dd>A / D or ← / →</dd>
+          <dt>Handbrake</dt><dd>Space</dd>
+          <dt>Pause</dt><dd>Esc</dd>
+        </dl>
+        <h2 class="section-title">Controller — Driving</h2>
+        <dl class="controls-list">
+          <dt>Steer</dt><dd>Left stick</dd>
+          <dt>Accelerate</dt><dd>RT / R2 or A / Cross</dd>
+          <dt>Brake / reverse</dt><dd>LT / L2 or X / Square</dd>
+          <dt>Handbrake</dt><dd>B / Circle</dd>
+          <dt>Pause / resume</dt><dd>Start / Options</dd>
+        </dl>
+        <h2 class="section-title">Menus</h2>
+        <p class="controls-help">D-pad / left stick to navigate, A / Cross to select, B / Circle to go back. Keyboard: Tab to navigate, Enter to select. Use a keyboard to enter your name.</p>
+        <button id="btnControlsBack" class="btn-main">BACK TO PAUSE MENU</button>
+        <p class="status-text">Esc / B / Circle to go back. The race stays paused.</p>
+      </div>
     </dialog>
   </div>
 

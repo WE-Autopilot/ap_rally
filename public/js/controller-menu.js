@@ -74,7 +74,10 @@
           this.clearFocus();
         }
         if (start || back) {
-          if (isGamePaused) resumeRace();
+          if (isGamePaused) {
+            if (back) backFromPauseMenu();
+            else resumeRace();
+          }
           else if (scope === warning && back) document.getElementById('btnCancelOverwrite').click();
           else if (scope.id === 'startScreen' && start) document.getElementById('btnStartGame').click();
           else if (scope.id === 'leaderboardScreen') {

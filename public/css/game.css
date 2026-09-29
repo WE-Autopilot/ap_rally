@@ -255,3 +255,21 @@
       outline-offset: 4px;
       box-shadow: 0 0 0 2px #ffffff;
     }
+
+    .controls-list {
+      display: grid;
+      grid-template-columns: 1fr 1.25fr;
+      gap: 8px 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .controls-list dd {
+      margin: 0;
+      font-weight: 700;
+    }
+    .controls-help {
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
