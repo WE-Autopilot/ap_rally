@@ -144,7 +144,14 @@
           { x: 200, y: 650 }
         ]
       }
-    ];
+    ].map(circuit => ({
+      ...circuit,
+      roadWidth: circuit.roadWidth * GAME_BALANCE.roadWidthScale,
+      nodes: circuit.nodes.map(({ x, y }) => ({
+        x: x * GAME_BALANCE.trackScale,
+        y: y * GAME_BALANCE.trackScale
+      }))
+    }));
 
     let currentTrackIdx = 0;
     let trackSpline = [];

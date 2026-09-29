@@ -2,6 +2,10 @@
 
 A browser racing game for the university club: six circuits, keyboard/gamepad controls, and the autonomous C1 opponent.
 
+Circuits are scaled to 150% of the original size with 140% road width. Both cars have 60% of their original top speed and acceleration, with gentler steering. Physics runs at a fixed 60 updates per second regardless of display refresh rate. Tuning lives in `public/js/config.js`.
+
+Press **Escape** or click **Pause [Esc]** during a race to pause. Use Escape or Resume Race to continue; End Race returns to circuit selection without saving an unfinished time. Switching tabs/windows also pauses the race. Paused time is excluded from race and lap clocks. Existing leaderboard records are retained; scores from the old balance are not directly comparable.
+
 ## Run locally
 
 Install Node.js 24 or newer (`nvm use` if you use nvm), then run from this directory:
@@ -76,6 +80,6 @@ To back up: stop the server cleanly, then copy the SQLite database to a safe loc
 
 ## Contributing
 
-Run `npm test` before committing. GitHub Actions runs the same suite on Node 24 and 26. Do not change frontend script order or add `async`/module loading casually: the extracted scripts retain their original shared scope. The source fingerprint test intentionally fails if game JavaScript, stylesheet or screen markup changes; update that baseline only as part of a reviewed behavior/UI change. See [architecture notes](docs/architecture.md) for the tradeoff.
+Run `npm test` before committing. GitHub Actions runs the same suite on Node 24 and 26. Do not change frontend script order or add `async`/module loading casually: the extracted scripts retain their original shared scope. Frontend tests cover circuit initialization, speed tuning, pause/resume clocks, quitting, animation-loop cleanup, refresh-rate independence and C1 completing all circuits. Original source fingerprints are retained in `tests/original-hashes.json` as historical evidence of the initial extraction; they are no longer enforced now that gameplay changes are intentional. See [architecture notes](docs/architecture.md) for the tradeoff.
 
 Git is initialized locally. No remote is configured and no code has been published.

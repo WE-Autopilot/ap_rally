@@ -33,7 +33,7 @@
       <button id="btnStartGame" class="btn-main">START RACE</button>
 
       <div class="instructions">
-        CONTROLS: Keyboard [W/Up: Throttle | S/Down: Brake/Reverse | A/D/Left/Right: Steer | Space: Handbrake]<br>
+        CONTROLS: Keyboard [W/Up: Throttle | S/Down: Brake/Reverse | A/D/Left/Right: Steer | Space: Handbrake | Esc: Pause]<br>
         GAMEPAD: [Left Stick / D-Pad: Steer | RT / A: Gas | LT / X: Brake]<br>
         OPPONENT: C1 (Curvature-Predictive Autonomous Racer with Apex Trail-Braking).
       </div>
@@ -51,6 +51,14 @@
       <div class="hud-row"><span>SPEED:</span><span id="hudSpeed" class="hud-val">0 KM/H</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
+    <button id="btnPauseRace" class="pause-button">PAUSE [ESC]</button>
+    <dialog id="pauseMenu" aria-labelledby="pauseTitle" aria-describedby="pauseDescription">
+      <h1 id="pauseTitle">RACE PAUSED</h1>
+      <p id="pauseDescription" class="subtitle">Take a breather. The cars and race clock are paused.</p>
+      <button id="btnResumeRace" class="btn-main" autofocus>RESUME RACE</button>
+      <button id="btnQuitRace" class="btn-main btn-secondary">END RACE &amp; RETURN TO MENU</button>
+      <p class="status-text">Esc to resume. Ending early won’t save a time.</p>
+    </dialog>
   </div>
 
   <!-- 3. LEADERBOARD SCREEN -->

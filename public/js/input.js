@@ -3,6 +3,7 @@
       constructor() {
         this.keys = {};
         window.addEventListener('keydown', e => {
+          if (e.code === 'Escape' || isGamePaused) return;
           this.keys[e.code] = true;
           audio.init();
         });
@@ -48,4 +49,3 @@
       }
     }
     const input = new InputManager();
-

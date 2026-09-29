@@ -1,4 +1,23 @@
     // UI Event Wiring
+    document.getElementById('btnPauseRace').addEventListener('click', pauseRace);
+    document.getElementById('btnResumeRace').addEventListener('click', resumeRace);
+    document.getElementById('btnQuitRace').addEventListener('click', quitRace);
+    document.getElementById('pauseMenu').addEventListener('cancel', e => {
+      e.preventDefault();
+      resumeRace();
+    });
+    window.addEventListener('keydown', e => {
+      if (e.code !== 'Escape' || !isGameRunning) return;
+      e.preventDefault();
+      if (e.repeat) return;
+      if (isGamePaused) resumeRace();
+      else pauseRace();
+    });
+    window.addEventListener('blur', pauseRace);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) pauseRace();
+    });
+
     document.querySelectorAll('.track-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('selected'));
@@ -64,4 +83,3 @@
     // Init
     drawPreview(0);
     fetchLeaderboardFromBackend(0);
-  

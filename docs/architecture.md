@@ -4,11 +4,17 @@ The original project contained `index.html` (all UI, styles and browser logic) a
 
 ## Browser preservation
 
-The original inline script was divided at existing responsibility boundaries, without rewriting any of its contents. Concatenating the scripts in HTML loading order reproduces the original JavaScript byte for byte. CSS is also extracted verbatim; screen markup remains unchanged. SHA-256 fingerprints captured before extraction verify this in `tests/frontend.test.js`.
+The original inline script was divided at existing responsibility boundaries, without rewriting any of its contents during the initial repository cleanup. Original SHA-256 fingerprints are retained in `tests/original-hashes.json` as a historical baseline. The subsequent requested balancing and pause-menu work intentionally changes frontend behavior and replaces the fingerprint assertion with behavior tests.
 
-Scripts intentionally remain ordered classic scripts sharing one global lexical scope. Converting to ES modules, adding a framework, introducing a bundler or changing state ownership would be a separate refactor with a larger regression surface. The files are separated by responsibility, but their shared state is not yet encapsulated. No physics, AI, track geometry, audio, controls, timing or presentation changes were made.
+Scripts intentionally remain ordered classic scripts sharing one global lexical scope. Converting to ES modules, adding a framework, introducing a bundler or changing state ownership would be a separate refactor with a larger regression surface. The files are separated by responsibility, but their shared state is not yet encapsulated. The initial cleanup did not change game behavior. The subsequent balancing pass scales track geometry/road width, reduces vehicle speed/acceleration/braking and steering, scales C1 braking thresholds, and uses a fixed 60 Hz simulation step so high-refresh screens do not accelerate gameplay.
 
-The automated smoke test executes files separately in their actual load order with browser API stubs, exercises all six circuit previews and starts/advances a race on each. It is not a replacement for a complete human playthrough or hardware gamepad/audio testing.
+The automated tests execute files separately in their actual load order with browser API stubs. They exercise all six previews and race starts, pause/resume timing, early exit, repeated starts, equivalent movement at 30/60/144 Hz, and C1 completing each enlarged circuit. It is not a replacement for a complete human playthrough or hardware gamepad/audio testing.
+
+## Pause lifecycle
+
+The race owns a single animation-frame handle. Pause cancels it, clears held keyboard input, silences the engine and opens a native modal dialog with contained keyboard focus. Resume shifts race and active lap start timestamps by the paused duration and resets the frame timestamp, preserving car state without simulating paused time. Escape, a visible Pause button, window blur and tab hiding can pause the race. Ending early cancels the loop, discards the pending submission and returns to the circuit menu.
+
+Vehicle reset also clears its lap-crossing flag, preventing a restarted race from inheriting permission to cross the finish line. Existing leaderboard scores are not reset or rewritten by balancing; old and new lap times are not directly comparable.
 
 ## Backend contract
 

@@ -11,6 +11,12 @@
     const botC1 = new Vehicle(true, "C1", "#555555");
 
     let isGameRunning = false;
+    let isGamePaused = false;
+    let pauseStartedAt = 0;
+    let animationFrameId = null;
+    let lastFrameTime = 0;
+    let physicsAccumulator = 0;
+    const PHYSICS_STEP_MS = 1000 / 60;
     let raceClockStart = 0;
     let pendingPlayerEntry = null;
 
@@ -93,6 +99,11 @@
     }
 
     function startRace() {
+      cancelAnimationFrame(animationFrameId);
+      document.getElementById('pauseMenu').close();
+      isGamePaused = false;
+      pendingPlayerEntry = null;
+      input.keys = {};
       initTrack(currentTrackIdx);
       const startP = trackSpline[0];
       const nextP = trackSpline[2];
@@ -113,14 +124,59 @@
       botC1.angle = initAngle;
 
       raceClockStart = performance.now();
+      lastFrameTime = raceClockStart;
+      physicsAccumulator = 0;
       player.lapStartTime = raceClockStart;
       botC1.lapStartTime = raceClockStart;
 
       document.getElementById('hudTrack').innerText = CIRCUITS[currentTrackIdx].name;
+      document.getElementById('hudBest').innerText = '--:--.---';
+      document.getElementById('hudTime').innerText = '00:00.000';
+      document.getElementById('hudLap').innerText = `1 / ${CIRCUITS[currentTrackIdx].laps}`;
+      document.getElementById('hudSpeed').innerText = '0 KM/H';
       switchScreen('gameScreen');
       isGameRunning = true;
       audio.init();
-      requestAnimationFrame(gameLoop);
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function pauseRace() {
+      if (!isGameRunning || isGamePaused) return;
+      isGamePaused = true;
+      pauseStartedAt = performance.now();
+      cancelAnimationFrame(animationFrameId);
+      input.keys = {};
+      audio.stopEngine();
+      document.getElementById('pauseMenu').showModal();
+    }
+
+    function resumeRace() {
+      if (!isGameRunning || !isGamePaused) return;
+      const now = performance.now();
+      const pausedDuration = now - pauseStartedAt;
+      raceClockStart += pausedDuration;
+      for (const car of [player, botC1]) {
+        if (!car.raceFinished) car.lapStartTime += pausedDuration;
+      }
+      lastFrameTime = now;
+      isGamePaused = false;
+      input.keys = {};
+      document.getElementById('pauseMenu').close();
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    function quitRace() {
+      if (!isGameRunning) return;
+      cancelAnimationFrame(animationFrameId);
+      isGameRunning = false;
+      isGamePaused = false;
+      pendingPlayerEntry = null;
+      input.keys = {};
+      audio.stopEngine();
+      document.getElementById('pauseMenu').close();
+      switchScreen('startScreen');
+      drawPreview(currentTrackIdx);
+      document.getElementById('btnStartGame').focus();
     }
 
     function formatTime(sec) {
@@ -133,16 +189,19 @@
 
     // Main Game Loop
     function gameLoop(timestamp) {
-      if (!isGameRunning) return;
+      if (!isGameRunning || isGamePaused) return;
 
       const pInput = input.getState();
-      const bInput = botC1.computeAIInput(trackSpline);
-
       const rw = CIRCUITS[currentTrackIdx].roadWidth;
-      player.update(1 / 60, pInput, trackSpline, rw);
-      botC1.update(1 / 60, bInput, trackSpline, rw);
-
-      resolveCarCollision(player, botC1);
+      // Fixed simulation rate prevents high-refresh displays speeding up the cars.
+      physicsAccumulator += Math.min(Math.max(timestamp - lastFrameTime, 0), 100);
+      lastFrameTime = timestamp;
+      while (physicsAccumulator + 1e-7 >= PHYSICS_STEP_MS) {
+        player.update(1 / 60, pInput, trackSpline, rw);
+        botC1.update(1 / 60, botC1.computeAIInput(trackSpline), trackSpline, rw);
+        resolveCarCollision(player, botC1);
+        physicsAccumulator -= PHYSICS_STEP_MS;
+      }
       audio.updateEngine(player.speed, player.maxSpeed);
 
       // Render world relative to Player camera
@@ -217,7 +276,7 @@
         return;
       }
 
-      requestAnimationFrame(gameLoop);
+      animationFrameId = requestAnimationFrame(gameLoop);
     }
 
     function renderCar(car) {
@@ -255,6 +314,7 @@
     }
 
     function endRace() {
+      cancelAnimationFrame(animationFrameId);
       isGameRunning = false;
       audio.stopEngine();
 
@@ -279,4 +339,3 @@
       switchScreen('leaderboardScreen');
       loadLeaderboard(currentTrackIdx);
     }
-

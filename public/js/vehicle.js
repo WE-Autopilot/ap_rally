@@ -19,11 +19,11 @@
         this.radius = 12;
 
         // Physics parameters
-        this.maxSpeed = this.isAI ? 10.9 : 10.7; // C1 is hyper-tuned
-        this.accel = 0.28;
-        this.brake = 0.45;
+        this.maxSpeed = (this.isAI ? 10.9 : 10.7) * GAME_BALANCE.speedScale;
+        this.accel = 0.28 * GAME_BALANCE.speedScale;
+        this.brake = 0.45 * GAME_BALANCE.speedScale;
         this.friction = 0.982;
-        this.turnRate = 0.055;
+        this.turnRate = 0.055 * GAME_BALANCE.steeringScale;
         this.offRoadFriction = 0.90;
 
         // Lap progression
@@ -31,6 +31,7 @@
         this.lap = 1;
         this.lapTimes = [];
         this.lapStartTime = 0;
+        this.canCross = false;
         this.raceFinished = false;
         this.totalRaceTime = 0;
 
@@ -66,7 +67,7 @@
         const distFromCenter = this.getDistanceFromCenterline(spline);
         if (distFromCenter > roadWidth / 2) {
           this.speed *= this.offRoadFriction;
-          if (this.speed > 4.5) this.speed = 4.5;
+          if (this.speed > 4.5 * GAME_BALANCE.speedScale) this.speed = 4.5 * GAME_BALANCE.speedScale;
         } else {
           this.speed *= this.friction;
         }
@@ -143,9 +144,9 @@
 
         // Trail brake before sharp corners, full throttle on straights
         let throttle = 1.0;
-        if (cornerSharpness > 0.45 && this.speed > 5.5) {
+        if (cornerSharpness > 0.45 && this.speed > 5.5 * GAME_BALANCE.speedScale) {
           throttle = -0.6; // Heavy braking into hairpin apex
-        } else if (Math.abs(diffAngle) > 0.5 && this.speed > 7.0) {
+        } else if (Math.abs(diffAngle) > 0.5 && this.speed > 7.0 * GAME_BALANCE.speedScale) {
           throttle = 0.1; // Gentle lift off
         }
 
@@ -179,4 +180,3 @@
         audio.playThud();
       }
     }
-
