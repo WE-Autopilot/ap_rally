@@ -104,7 +104,7 @@ test('Escape freezes cars and timer; resume excludes every pause from both lap c
   game.element('btnPauseRace').handlers.click();
   game.setTime(11000);
   game.element('btnResumeRace').handlers.click();
-  game.run('player.canCross = true; player.currentSplineIndex = 0; player.updateLapTracking(trackSpline);');
+  game.run('player.nextLapCheckpoint = 4; player.previousLapIndex = trackSpline.length - 1; player.currentSplineIndex = 0; player.updateLapTracking(trackSpline);');
   assert.equal(game.run('player.lapTimes[0]'), 2);
   assert.equal(game.frames.size, 1);
 });
@@ -113,7 +113,7 @@ test('quit never submits an unfinished race, and restarting leaves one clean ani
   const game = createGame();
   game.key('Escape');
   assert.equal(game.element('pauseMenu').open, false);
-  game.run('startRace(); player.canCross = true; pendingPlayerEntry = { time: 5 };');
+  game.run('startRace(); player.nextLapCheckpoint = 4; pendingPlayerEntry = { time: 5 };');
   game.blur();
   assert.equal(game.element('pauseMenu').open, true);
   game.element('btnQuitRace').handlers.click();
@@ -122,7 +122,7 @@ test('quit never submits an unfinished race, and restarting leaves one clean ani
   assert.equal(game.frames.size, 0);
   assert.equal(game.element('pauseMenu').open, false);
   game.run('startRace(); startRace();');
-  assert.equal(game.run('player.canCross'), false);
+  assert.equal(game.run('player.nextLapCheckpoint'), 1);
   assert.equal(game.frames.size, 1);
 });
 

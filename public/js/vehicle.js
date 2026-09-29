@@ -36,7 +36,8 @@
         this.lap = 1;
         this.lapTimes = [];
         this.lapStartTime = 0;
-        this.canCross = false;
+        this.previousLapIndex = 0;
+        this.nextLapCheckpoint = 1;
         this.raceFinished = false;
         this.totalRaceTime = 0;
 
@@ -108,12 +109,22 @@
 
       updateLapTracking(spline) {
         const len = spline.length;
-        // Detect lap line pass (transition from near end to beginning)
-        if (this.currentSplineIndex > len - 15 && !this.crossedStartLine) {
-          this.canCross = true;
+        if (this.raceFinished) return;
+        const previous = this.previousLapIndex;
+        const current = this.currentSplineIndex;
+        this.previousLapIndex = current;
+
+        // Visit quarter-circuit checkpoints in order before accepting a finish.
+        // This excludes the grid's initial line crossing and line oscillations.
+        const checkpoint = Math.floor(len * this.nextLapCheckpoint / 4);
+        if (this.nextLapCheckpoint <= 3 && current > previous
+            && current - previous < len / 4
+            && previous < checkpoint && current >= checkpoint) {
+          this.nextLapCheckpoint++;
         }
-        if (this.canCross && this.currentSplineIndex < 15) {
-          this.canCross = false;
+        const crossedForward = previous > len * 0.75 && current < len * 0.25;
+        if (crossedForward && this.nextLapCheckpoint === 4) {
+          this.nextLapCheckpoint = 1;
           const now = performance.now();
           if (this.lapStartTime > 0) {
             const lapTime = (now - this.lapStartTime) / 1000;

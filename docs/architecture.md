@@ -22,7 +22,7 @@ Both cars share the same top speed of 6.42 units/tick. AI-only tuning adds 35% a
 
 The race owns a single animation-frame handle. Pause cancels it, clears held keyboard input, silences the engine and opens a native modal dialog with contained keyboard focus. Resume shifts race and active lap start timestamps by the paused duration and resets the frame timestamp, preserving car state without simulating paused time. Escape, a visible Pause button, window blur and tab hiding can pause the race. Ending early cancels the loop, discards the pending submission and returns to the circuit menu.
 
-Vehicle reset also clears its lap-crossing flag, preventing a restarted race from inheriting permission to cross the finish line. Existing leaderboard scores are not reset or rewritten by balancing; old and new lap times are not directly comparable.
+Lap tracking requires three ordered quarter-circuit checkpoints followed by a forward finish-line crossing. The starting-grid crossing, reverse driving and finish-line oscillations cannot count as completed laps. Vehicle reset clears checkpoint progress and the previous spline index. Both cars remain driveable on lap 2 and enter their finish coast only after two complete circuits. Existing leaderboard scores are not reset or rewritten by balancing; old and new lap times are not directly comparable.
 
 ## Controller menu input
 
