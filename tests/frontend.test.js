@@ -61,9 +61,9 @@ test('all six larger circuits initialize and both cars have lower speed limits',
   assert.equal(game.run('CIRCUITS.length'), 6);
   assert.equal(game.run('CIRCUITS[0].nodes[0].x'), 450);
   assert.ok(Math.abs(game.run('CIRCUITS[0].roadWidth') - 126) < 1e-9);
-  assert.ok(Math.abs(game.run('player.maxSpeed') - 6.42) < 1e-9);
+  assert.ok(Math.abs(game.run('player.maxSpeed') - 7.383) < 1e-9);
   assert.equal(game.run('botC1.maxSpeed'), game.run('player.maxSpeed'));
-  assert.ok(Math.abs(game.run('player.accel') - 0.168) < 1e-9);
+  assert.ok(Math.abs(game.run('player.accel') - 0.1428) < 1e-9);
   assert.ok(Math.abs(game.run('player.brake') - 0.27) < 1e-9);
   assert.ok(Math.abs(game.run('player.turnRate') - 0.044) < 1e-9);
   for (let i = 0; i < 6; i++) {
@@ -139,6 +139,33 @@ test('driving covers the same distance at 30, 60 and 144 Hz', () => {
     const result = drive(hz);
     result.forEach((value, i) => assert.ok(Math.abs(value - reference[i]) < 1e-6, `${hz} Hz: component ${i}`));
   }
+});
+
+test('handbrake creates a controllable drift and releasing it restores grip', () => {
+  const game = createGame();
+  game.run('startRace(); player.speed = player.maxSpeed * 0.85;');
+  game.run(`for (let i = 0; i < 12; i++) player.update(1 / 60,
+    { throttle: 1, steer: 1, handbrake: true }, trackSpline, CIRCUITS[currentTrackIdx].roadWidth);`);
+  assert.equal(game.run('player.isDrifting'), true);
+  const slip = Math.abs(game.run('player.driftAngle'));
+  assert.ok(slip > 0.09 && slip <= 0.72);
+  game.run(`for (let i = 0; i < 24; i++) player.update(1 / 60,
+    { throttle: 1, steer: 0, handbrake: false }, trackSpline, CIRCUITS[currentTrackIdx].roadWidth);`);
+  assert.ok(Math.abs(game.run('player.driftAngle')) < slip * 0.05);
+  assert.equal(game.run('player.isDrifting'), false);
+});
+
+test('camera smoothly zooms out as the player approaches top speed', () => {
+  const game = createGame();
+  game.run('startRace()');
+  assert.equal(game.run('cameraZoom'), game.run('CAMERA_ZOOM_MAX'));
+  game.run('player.speed = player.maxSpeed; for (let i = 0; i < 180; i++) updateCameraZoom();');
+  const fastZoom = game.run('cameraZoom');
+  assert.ok(fastZoom < 0.8, `expected a wide top-speed view, got ${fastZoom}`);
+  assert.ok(fastZoom >= game.run('CAMERA_ZOOM_MIN'));
+  game.run('player.speed = 0; for (let i = 0; i < 120; i++) updateCameraZoom();');
+  assert.ok(game.run('cameraZoom') > fastZoom);
+  assert.ok(game.run('cameraZoom') <= game.run('CAMERA_ZOOM_MAX'));
 });
 
 test('C1 still completes each enlarged circuit with the new speed and steering', () => {

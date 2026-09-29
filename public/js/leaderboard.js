@@ -46,9 +46,10 @@
           list[existingIdx].time = entry.time;
           list[existingIdx].gap = entry.gap;
           list[existingIdx].date = entry.date;
+          list[existingIdx].ghost = entry.ghost;
         }
       } else {
-        list.push({ name: entry.name, time: entry.time, gap: entry.gap, date: entry.date });
+        list.push({ name: entry.name, time: entry.time, gap: entry.gap, date: entry.date, ghost: entry.ghost });
       }
 
       list.sort((a, b) => a.time - b.time);
@@ -57,9 +58,23 @@
       return list;
     }
 
+    async function loadBestGhost(trackIdx) {
+      try {
+        const response = await fetch(`/api/ghost?trackIndex=${trackIdx}`);
+        if (!response.ok) throw new Error('Ghost unavailable');
+        const result = await response.json();
+        bestGhost = Array.isArray(result.ghost) ? result.ghost : [];
+        bestGhostTime = Number(result.time) || 0;
+      } catch (error) {
+        const cached = JSON.parse(localStorage.getItem(`autopilot_lb_${trackIdx}`) || '[]');
+        bestGhost = Array.isArray(cached[0]?.ghost) ? cached[0].ghost : [];
+        bestGhostTime = Number(cached[0]?.time) || 0;
+      }
+    }
+
     function getDefaultLeaderboard(trackIdx) {
       return [
-        { name: "C1", time: 42.120 + trackIdx * 4.5, gap: "LEADER", date: new Date().toISOString() },
+        { name: OPPONENT_NAME, time: 42.120 + trackIdx * 4.5, gap: "LEADER", date: new Date().toISOString() },
         { name: "AP_BOT_PRO", time: 44.380 + trackIdx * 4.5, gap: "+2.260s", date: new Date().toISOString() },
         { name: "GRID_TESTER", time: 47.900 + trackIdx * 4.5, gap: "+5.780s", date: new Date().toISOString() }
       ];
@@ -82,7 +97,7 @@
 
       records.forEach((row, i) => {
         const tr = document.createElement('tr');
-        if (row.name === "C1") tr.classList.add('highlight');
+        if (row.name === OPPONENT_NAME) tr.classList.add('highlight');
         tr.innerHTML = `
           <td>${i + 1}</td>
           <td>${escapeHtml(row.name)}</td>
@@ -98,4 +113,3 @@
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
       })[m]);
     }
-

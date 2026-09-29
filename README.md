@@ -1,8 +1,8 @@
 # Autopilot: Rally
 
-A browser racing game for the university club: six circuits, keyboard/gamepad controls, and the autonomous C1 opponent.
+A browser racing game for the university club: six circuits, keyboard/gamepad controls, and the autonomous 57_Italian opponent.
 
-Circuits are scaled to 150% of the original size with 140% road width. The player has 60% of the original top speed and acceleration, with gentler steering. C1 Expert uses distance-based pursuit and predictive braking, with the same top speed as the player, plus stronger acceleration, braking and steering. Physics runs at a fixed 60 updates per second regardless of display refresh rate. Player/track tuning and C1-specific performance multipliers live in `public/js/config.js`.
+Circuits are scaled to 150% of the original size with 140% road width. The player has 60% of the original top speed and acceleration, with gentler steering. 57_Italian uses distance-based pursuit and predictive braking, with the same top speed as the player, plus stronger acceleration, braking and steering. Physics runs at a fixed 60 updates per second regardless of display refresh rate. Player/track tuning and C1-specific performance multipliers live in `public/js/config.js`.
 
 Press **Escape** or click **Pause [Esc]** during a race to pause. Choose **Controls** for the keyboard/controller reference; Escape or B / Circle returns from it to the pause menu. Use Escape or Resume Race from the pause menu to continue; End Race returns to circuit selection without saving an unfinished time. Switching tabs/windows also pauses the race. Paused time is excluded from race and lap clocks. Existing leaderboard records are retained; scores from the old balance are not directly comparable.
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AUTOPILOT</title>
+  <title>Autopilot: Rally</title>
   <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
@@ -11,33 +11,19 @@
   <!-- 1. START SCREEN -->
   <div id="startScreen" class="screen active">
     <div class="border-box">
-      <h1>Autopilot</h1>
-      <div class="subtitle">2D Formula Time Trial. You vs Autonomous Racer C1.</div>
+      <header class="menu-header">
+        <p class="menu-eyebrow">Autonomous racing / Time trial</p>
+        <h1 class="game-title">Autopilot: <span>Rally</span></h1>
+      </header>
 
       <div class="section-title">Circuit Schematic Preview</div>
       <div class="preview-container">
         <canvas id="previewCanvas" width="600" height="200"></canvas>
-        <div class="preview-info" id="previewMeta">SELECT A CIRCUIT</div>
-      </div>
-
-      <div class="section-title">Select Circuit</div>
-      <div class="grid-buttons" id="trackSelector">
-        <button class="track-btn selected" data-track="0">1. Grand Hairpin</button>
-        <button class="track-btn" data-track="1">2. Figure Eight</button>
-        <button class="track-btn" data-track="2">3. Omega Hairpin</button>
-        <button class="track-btn" data-track="3">4. Suzuka S-Complex</button>
-        <button class="track-btn" data-track="4">5. Twin Helix</button>
-        <button class="track-btn" data-track="5">6. The Colosseum</button>
+        <div class="preview-info" id="previewMeta">LOADING CIRCUIT</div>
       </div>
 
       <button id="btnStartGame" class="btn-main">START RACE</button>
 
-      <div class="instructions">
-        CONTROLS: Keyboard [W/Up: Throttle | S/Down: Brake/Reverse | A/D/Left/Right: Steer | Space: Handbrake | Esc: Pause]<br>
-        GAMEPAD: [Left Stick: Steer | RT / A: Gas | LT / X: Brake | Start / Options: Pause]<br>
-        MENUS: [D-Pad / Stick: Navigate | A / Cross: Select | B / Circle: Back | Start / Options: Race]<br>
-        OPPONENT: C1 EXPERT (Predictive corner braking, precision steering, enhanced performance).
-      </div>
     </div>
   </div>
 
@@ -50,6 +36,7 @@
       <div class="hud-row"><span>TIME:</span><span id="hudTime" class="hud-val">00:00.000</span></div>
       <div class="hud-row"><span>BEST:</span><span id="hudBest" class="hud-val">--:--.---</span></div>
       <div class="hud-row"><span>SPEED:</span><span id="hudSpeed" class="hud-val">0 KM/H</span></div>
+      <div class="hud-row"><span>STATE:</span><span id="hudHandling" class="hud-val">GRIP</span></div>
     </div>
     <canvas id="gameCanvas"></canvas>
     <button id="btnPauseRace" class="pause-button">PAUSE [ESC]</button>
@@ -132,7 +119,7 @@
 
       <div style="display: flex; gap: 8px; margin-top: 12px;">
         <button id="btnRestartRace" class="btn-main" style="margin-top:0; flex:1;">RETRY CIRCUIT</button>
-        <button id="btnReturnMenu" class="btn-main" style="margin-top:0; flex:1; background:#ffffff; color:#111111;">CIRCUIT MENU</button>
+        <button id="btnReturnMenu" class="btn-main" style="margin-top:0; flex:1; background:#ffffff; color:#111111;">MAIN MENU</button>
       </div>
     </div>
   </div>

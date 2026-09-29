@@ -3,7 +3,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 // Run the real driving controller and vehicle physics, without canvas/browser timing.
-function simulateCircuit(trackIndex, { recovery = false } = {}) {
+function simulateCircuit(trackIndex, { recovery = false, countDrifts = false } = {}) {
   let now = 1000;
   const context = vm.createContext({ performance: { now: () => now } });
   for (const file of ['config', 'tracks', 'vehicle']) {
@@ -11,6 +11,7 @@ function simulateCircuit(trackIndex, { recovery = false } = {}) {
   }
   context.trackIndex = trackIndex;
   context.recovery = recovery;
+  context.countDrifts = countDrifts;
   context.tickClock = tick => { now = 1000 + tick * 1000 / 60; };
   return vm.runInContext(`
     initTrack(trackIndex);
@@ -23,7 +24,7 @@ function simulateCircuit(trackIndex, { recovery = false } = {}) {
     car.y = start.y - Math.cos(car.angle) * 14 - Math.sin(car.angle) * 20;
     car.lapStartTime = 1000;
     let offRoadTicks = 0, speedSum = 0, distanceTravelled = 0, recoveryTicks = 0;
-    let recovering = false;
+    let recovering = false, handbrakeTicks = 0;
     const ticks = 7200;
     for (let tick = 0; tick < ticks; tick++) {
       tickClock(tick);
@@ -35,6 +36,7 @@ function simulateCircuit(trackIndex, { recovery = false } = {}) {
         recovering = true;
       }
       const controls = car.computeAIInput(trackSpline);
+      if (controls.handbrake) handbrakeTicks++;
       if (!Number.isFinite(controls.steer) || !Number.isFinite(controls.throttle)
           || Math.abs(controls.steer) > 1 || Math.abs(controls.throttle) > 1) {
         throw new Error('Invalid AI controls');
@@ -53,7 +55,8 @@ function simulateCircuit(trackIndex, { recovery = false } = {}) {
     ({ name: CIRCUITS[trackIndex].name, meanSpeed: speedSum / ticks,
        offRoadPercent: offRoadTicks / ticks * 100,
        circuitsTravelled: distanceTravelled / trackLength,
-       recoverySeconds: recoveryTicks / 60, recovered: !recovering });
+       recoverySeconds: recoveryTicks / 60, recovered: !recovering,
+       ...(countDrifts ? { handbrakeTicks } : {}) });
   `, context);
 }
 module.exports = { simulateCircuit };

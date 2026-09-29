@@ -18,3 +18,9 @@ for (let track = 0; track < 6; track++) {
     assert.ok(result.offRoadPercent < 5, JSON.stringify(result));
   });
 }
+
+test('C1 uses the handbrake selectively for difficult corners', () => {
+  const result = simulateCircuit(3, { countDrifts: true });
+  assert.ok(result.handbrakeTicks > 0, JSON.stringify(result));
+  assert.ok(result.handbrakeTicks < 720, JSON.stringify(result));
+});

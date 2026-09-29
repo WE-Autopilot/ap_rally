@@ -14,17 +14,20 @@
         this.speed = 0;
         this.vx = 0;
         this.vy = 0;
+        this.driftAngle = 0;
+        this.isDrifting = false;
+        this.driftTimer = 0;
         this.length = 26;
         this.width = 14;
         this.radius = 12;
 
         // Physics parameters
         this.maxSpeed = 10.7 * GAME_BALANCE.speedScale;
-        this.accel = 0.28 * GAME_BALANCE.speedScale;
-        this.brake = 0.45 * GAME_BALANCE.speedScale;
-        this.friction = 0.982;
+        this.accel = 0.28 * GAME_BALANCE.accelerationScale;
+        this.brake = 0.45 * GAME_BALANCE.brakingScale;
+        this.friction = 0.988;
         this.turnRate = 0.055 * GAME_BALANCE.steeringScale;
-        this.offRoadFriction = 0.90;
+        this.offRoadFriction = 0.91;
         if (this.isAI) {
           this.accel *= C1_TUNING.accelerationMultiplier;
           this.brake *= C1_TUNING.brakingMultiplier;
@@ -43,6 +46,8 @@
 
         // AI tracking state
         this.aiTargetIndex = 5;
+        this.aiLastProgress = 0;
+        this.aiStuckTicks = 0;
       }
 
       update(dt, state, spline, roadWidth) {
@@ -53,10 +58,21 @@
           return;
         }
 
-        // Steer & Acceleration
+        const speedRatio = Math.min(1, Math.abs(this.speed) / Math.max(this.maxSpeed, 0.001));
+        const canStartDrift = state.handbrake && Math.abs(state.steer) > 0.2 && speedRatio > 0.42;
+        if (canStartDrift) this.driftTimer = 0.42;
+        else this.driftTimer = Math.max(0, this.driftTimer - dt);
+
+        const activelyDrifting = this.driftTimer > 0 && speedRatio > 0.28;
+
+        // Steering is calmer near rest and sharpens with speed, like an arcade racer.
         if (Math.abs(this.speed) > 0.2) {
           const dir = this.speed >= 0 ? 1 : -1;
-          this.angle += state.steer * this.turnRate * dir;
+          const speedSteering = 0.72 + speedRatio * 0.38;
+          const driftSteering = activelyDrifting ? 1.5 : 1;
+          this.angle += state.steer * this.turnRate * dir * speedSteering * driftSteering;
+          // The velocity keeps its old heading while the nose rotates into the corner.
+          this.driftAngle -= state.steer * this.turnRate * dir * driftSteering * (0.25 + speedRatio * 0.8);
         }
 
         if (state.throttle > 0) {
@@ -66,7 +82,23 @@
         }
 
         if (state.handbrake) {
-          this.speed *= 0.91;
+          // A short tap initiates the slide without acting like a conventional brake.
+          this.speed *= canStartDrift ? 0.994 : 0.982;
+        }
+
+        // Counter-steering catches a slide quickly; holding the turn sustains it.
+        const isCounterSteering = Math.abs(state.steer) > 0.15
+          && Math.sign(state.steer) === Math.sign(this.driftAngle);
+        if (isCounterSteering) this.driftAngle *= Math.pow(0.84, dt * 60);
+        const grip = activelyDrifting ? 0.972 : 0.80;
+        this.driftAngle *= Math.pow(grip, dt * 60);
+        this.driftAngle = Math.max(-0.82, Math.min(0.82, this.driftAngle));
+        this.isDrifting = activelyDrifting && Math.abs(this.driftAngle) > 0.075;
+
+        // Clean, shallow slides preserve speed; excessive angle scrubs momentum.
+        if (this.isDrifting) {
+          const excessSlip = Math.max(0, Math.abs(this.driftAngle) - 0.24);
+          this.speed *= 1 - excessSlip * 0.018;
         }
 
         // Environment friction check
@@ -82,8 +114,11 @@
         if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
         if (this.speed < -this.maxSpeed * 0.4) this.speed = -this.maxSpeed * 0.4;
 
-        this.x += Math.cos(this.angle) * this.speed;
-        this.y += Math.sin(this.angle) * this.speed;
+        const velocityAngle = this.angle + this.driftAngle;
+        this.vx = Math.cos(velocityAngle) * this.speed;
+        this.vy = Math.sin(velocityAngle) * this.speed;
+        this.x += this.vx;
+        this.y += this.vy;
 
         this.updateLapTracking(spline);
       }
@@ -141,7 +176,7 @@
       }
 
       // Distance-based pursuit with a braking envelope for upcoming corners.
-      computeAIInput(spline) {
+      computeAIInput(spline, roadWidth = 90, opponent = null) {
         const len = spline.length;
         this.getDistanceFromCenterline(spline);
         const lookahead = 32 + Math.abs(this.speed) * 6;
@@ -151,6 +186,7 @@
         let distance = 0;
         let targetFound = false;
         let targetSpeed = this.maxSpeed;
+        let targetBend = 0;
 
         for (let step = 0; step < len && distance < horizon; step++) {
           const index = (this.currentSplineIndex + step) % len;
@@ -162,6 +198,7 @@
           const headingIn = Math.atan2(point.y - previous.y, point.x - previous.x);
           const headingOut = Math.atan2(next.y - point.y, next.x - point.x);
           const bend = Math.abs(Math.atan2(Math.sin(headingOut - headingIn), Math.cos(headingOut - headingIn)));
+          const signedBend = Math.atan2(Math.sin(headingOut - headingIn), Math.cos(headingOut - headingIn));
           const curvature = bend / Math.max((incoming + outgoing) / 2, 0.001);
           const cornerSpeed = Math.min(this.maxSpeed, this.turnRate * 0.82 / Math.max(curvature, 0.00001));
           // Brake early enough to reach each corner's steering-limited speed.
@@ -170,7 +207,16 @@
 
           if (!targetFound && distance + outgoing >= lookahead) {
             const fraction = (lookahead - distance) / Math.max(outgoing, 0.001);
-            target = { x: point.x + (next.x - point.x) * fraction, y: point.y + (next.y - point.y) * fraction };
+            const baseX = point.x + (next.x - point.x) * fraction;
+            const baseY = point.y + (next.y - point.y) * fraction;
+            // Clip toward the apex on meaningful bends for a faster, smoother racing line.
+            const apexOffset = Math.sign(signedBend) * Math.min(roadWidth * 0.18, bend * roadWidth * 1.2);
+            const segmentHeading = Math.atan2(next.y - point.y, next.x - point.x);
+            target = {
+              x: baseX - Math.sin(segmentHeading) * apexOffset,
+              y: baseY + Math.cos(segmentHeading) * apexOffset
+            };
+            targetBend = signedBend;
             targetFound = true;
           }
           distance += outgoing;
@@ -180,16 +226,27 @@
         const dy = target.y - this.y;
         const headingError = Math.atan2(Math.sin(Math.atan2(dy, dx) - this.angle), Math.cos(Math.atan2(dy, dx) - this.angle));
         const pursuitCurvature = 2 * Math.sin(headingError) / Math.max(Math.hypot(dx, dy), 1);
-        const steer = Math.max(-1, Math.min(1, pursuitCurvature * Math.max(Math.abs(this.speed), 2) / this.turnRate));
+        let steer = Math.max(-1, Math.min(1, pursuitCurvature * Math.max(Math.abs(this.speed), 2) / this.turnRate));
+        // Pick the open side instead of driving straight into the player.
+        if (opponent && Math.hypot(opponent.x - this.x, opponent.y - this.y) < 75) {
+          const relativeSide = Math.sin(this.angle) * (opponent.x - this.x) - Math.cos(this.angle) * (opponent.y - this.y);
+          steer += relativeSide > 0 ? 0.22 : -0.22;
+          steer = Math.max(-1, Math.min(1, steer));
+        }
         // Recover after contact without charging away from the track.
         targetSpeed = Math.min(targetSpeed, this.turnRate * 0.9 / Math.max(Math.abs(pursuitCurvature), 0.00001));
         if (Math.abs(headingError) > 1) targetSpeed = Math.min(targetSpeed, 2);
         targetSpeed = Math.max(1.2, targetSpeed);
         const speedError = targetSpeed - this.speed;
-        const throttle = speedError < -0.15
+        let throttle = speedError < -0.15
           ? Math.max(-1, speedError / this.brake)
           : Math.max(0, Math.min(1, (targetSpeed * (1 / this.friction - 1) + speedError * 0.5) / this.accel));
-        return { steer, throttle, handbrake: false };
+        const handbrake = Math.abs(targetBend) > 0.035
+          && Math.abs(headingError) > 0.16
+          && this.speed > this.maxSpeed * 0.72
+          && targetSpeed < this.speed * 0.92;
+        if (handbrake) throttle = Math.max(throttle, 0.25);
+        return { steer, throttle, handbrake };
       }
     }
 

@@ -1,6 +1,6 @@
 // Original ranking rules, moved from game.js without algorithm changes.
 function submitEntry(data, payload) {
-  const { trackIndex, name, time, gap, date } = payload;
+  const { trackIndex, name, time, gap, date, ghost } = payload;
         const key = String(trackIndex);
         if (!data[key]) data[key] = [];
 
@@ -10,13 +10,15 @@ function submitEntry(data, payload) {
             data[key][existingIdx].time = time;
             data[key][existingIdx].gap = gap;
             data[key][existingIdx].date = date || new Date().toISOString();
+            data[key][existingIdx].ghost = ghost;
           }
         } else {
           data[key].push({
             name: name.trim(),
             time,
             gap,
-            date: date || new Date().toISOString()
+            date: date || new Date().toISOString(),
+            ghost
           });
         }
 

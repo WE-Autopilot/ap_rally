@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Autopilot: Rally — Admin</title>
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">Autopilot: Rally</p>
+        <h1>Admin Control</h1>
+      </div>
+      <a href="/">Return to game</a>
+    </header>
+
+    <section id="loginPanel" class="panel login-panel">
+      <h2>Admin login</h2>
+      <form id="loginForm">
+        <label for="password">Password</label>
+        <div class="form-row">
+          <input id="password" type="password" autocomplete="current-password" required autofocus>
+          <button type="submit">Unlock</button>
+        </div>
+        <p id="loginError" class="error" role="alert"></p>
+      </form>
+    </section>
+
+    <div id="adminPanel" hidden>
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Active circuit</h2>
+            <p>This is the circuit every player receives when starting a race.</p>
+          </div>
+          <button id="logoutButton" class="secondary">Lock admin</button>
+        </div>
+        <div id="circuitOptions" class="circuit-grid"></div>
+        <p id="circuitStatus" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div>
+            <h2>Leaderboard database</h2>
+            <p>Edit a record in place or remove individual rows.</p>
+          </div>
+          <button id="resetButton" class="danger">Reset all rows</button>
+        </div>
+        <div id="leaderboards"></div>
+        <p id="dataStatus" class="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </main>
+  <script src="js/admin.js"></script>
+</body>
+</html>

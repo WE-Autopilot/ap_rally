@@ -20,10 +20,20 @@ function openDatabase(filename) {
   try {
     transaction(() => {
       const version = db.prepare('PRAGMA user_version').get().user_version;
-      if (version > 1) throw new Error('Database schema is newer than this application');
+      if (version > 3) throw new Error('Database schema is newer than this application');
       if (version === 0) {
         db.exec(fs.readFileSync(path.join(__dirname, 'migrations/001-leaderboard.sql'), 'utf8'));
         db.exec('PRAGMA user_version = 1');
+      }
+      const migratedVersion = db.prepare('PRAGMA user_version').get().user_version;
+      if (migratedVersion === 1) {
+        db.exec(fs.readFileSync(path.join(__dirname, 'migrations/002-settings.sql'), 'utf8'));
+        db.exec('PRAGMA user_version = 2');
+      }
+      const settingsVersion = db.prepare('PRAGMA user_version').get().user_version;
+      if (settingsVersion === 2) {
+        db.exec(fs.readFileSync(path.join(__dirname, 'migrations/003-ghost.sql'), 'utf8'));
+        db.exec('PRAGMA user_version = 3');
       }
     });
   } catch (error) {
@@ -31,9 +41,11 @@ function openDatabase(filename) {
     throw error;
   }
   const readTracks = db.prepare('SELECT track_key FROM tracks ORDER BY rowid');
-  const readEntries = db.prepare('SELECT name, time, gap, date FROM leaderboard_entries WHERE track_key = ? ORDER BY position');
+  const readEntries = db.prepare('SELECT name, time, gap, date, ghost FROM leaderboard_entries WHERE track_key = ? ORDER BY position');
   const insertTrack = db.prepare('INSERT INTO tracks (track_key) VALUES (?)');
-  const insertEntry = db.prepare('INSERT INTO leaderboard_entries VALUES (?, ?, ?, ?, ?, ?)');
+  const insertEntry = db.prepare('INSERT INTO leaderboard_entries (track_key, position, name, time, gap, date, ghost) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const readSetting = db.prepare('SELECT value FROM settings WHERE key = ?');
+  const writeSetting = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value');
   function readData() {
     const data = Object.create(null);
     for (const { track_key } of readTracks.all()) {
@@ -41,6 +53,7 @@ function openDatabase(filename) {
         const entry = { name: row.name, time: row.time };
         if (row.gap !== null) entry.gap = JSON.parse(row.gap);
         if (row.date !== null) entry.date = JSON.parse(row.date);
+        if (row.ghost !== null) entry.ghost = JSON.parse(row.ghost);
         return entry;
       });
     }
@@ -54,7 +67,8 @@ function openDatabase(filename) {
       entries.forEach((entry, position) => insertEntry.run(
         key, position, entry.name, entry.time,
         entry.gap === undefined ? null : JSON.stringify(entry.gap),
-        entry.date === undefined ? null : JSON.stringify(entry.date)
+        entry.date === undefined ? null : JSON.stringify(entry.date),
+        entry.ghost === undefined ? null : JSON.stringify(entry.ghost)
       ));
     }
   }
@@ -67,6 +81,12 @@ function openDatabase(filename) {
         writeData(data);
         return result;
       });
+    },
+    getSetting(key) {
+      return transaction(() => readSetting.get(key)?.value);
+    },
+    setSetting(key, value) {
+      return transaction(() => writeSetting.run(key, String(value)));
     },
     close: () => db.close()
   };

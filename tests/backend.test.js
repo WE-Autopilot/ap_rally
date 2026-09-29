@@ -43,6 +43,17 @@ test('database persists after reopen and failed writes roll back', () => {
   } finally { db.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('fastest entries persist ghost replay telemetry', () => {
+  const db = openDatabase(':memory:');
+  try {
+    const ghost = [{ t: 0, x: 10, y: 20, a: 0 }, { t: 0.1, x: 11, y: 20, a: 0.1 }];
+    db.update(data => submitEntry(data, { ...entry('GhostDriver', 40), ghost }));
+    assert.deepEqual(db.readData()['0'][0].ghost, ghost);
+    db.update(data => submitEntry(data, { ...entry('GhostDriver', 39), ghost: ghost.slice(0, 1) }));
+    assert.deepEqual(db.readData()['0'][0].ghost, ghost.slice(0, 1));
+  } finally { db.close(); }
+});
+
 test('HTTP API, errors, CORS and public-only static hosting', async t => {
   const database = openDatabase(':memory:');
   const server = createApp({ database, publicDir });
@@ -60,16 +71,36 @@ test('HTTP API, errors, CORS and public-only static hosting', async t => {
   assert.deepEqual(await (await get('/api/leaderboard?trackIndex=0')).json(), saved.leaderboard);
   assert.equal((await post('{}')).status, 400);
   assert.equal((await post('not json')).status, 500);
-  assert.equal((await post('x'.repeat(16385))).status, 413);
+  assert.equal((await post('x'.repeat(1048577))).status, 413);
+  assert.deepEqual(await (await get('/api/ghost?trackIndex=0')).json(), { time: 42, ghost: [] });
   const options = await fetch(base + '/api/leaderboard', { method: 'OPTIONS' });
   assert.equal(options.status, 204);
   assert.equal(options.headers.get('access-control-allow-origin'), '*');
+  assert.match(options.headers.get('access-control-allow-methods'), /DELETE/);
+  assert.match(options.headers.get('access-control-allow-headers'), /Authorization/);
+  assert.deepEqual(await (await get('/api/config')).json(), { trackIndex: 0 });
+  const auth = { Authorization: `Basic ${Buffer.from('admin:weap').toString('base64')}`, 'Content-Type': 'application/json' };
+  assert.equal((await get('/api/admin/data')).status, 401);
+  let admin = await (await fetch(base + '/api/admin/data', { headers: auth })).json();
+  assert.equal(admin.leaderboards['0'][0].name, 'Driver');
+  let changed = await (await fetch(base + '/api/admin/entries/0/0', {
+    method: 'PUT', headers: auth, body: JSON.stringify({ name: 'Edited', time: 41, gap: 'LEADER', date: 'today' })
+  })).json();
+  assert.equal(changed.leaderboard[0].name, 'Edited');
+  await fetch(base + '/api/admin/config', { method: 'PUT', headers: auth, body: JSON.stringify({ trackIndex: 5 }) });
+  assert.deepEqual(await (await get('/api/config')).json(), { trackIndex: 5 });
+  await fetch(base + '/api/admin/entries/0/0', { method: 'DELETE', headers: auth });
+  admin = await (await fetch(base + '/api/admin/data', { headers: auth })).json();
+  assert.deepEqual(admin.leaderboards['0'], []);
+  await fetch(base + '/api/admin/leaderboard', { method: 'DELETE', headers: auth });
+  assert.deepEqual((await (await fetch(base + '/api/admin/data', { headers: auth })).json()).leaderboards, {});
   const home = await get('/');
   assert.equal(home.status, 200);
   const html = await home.text();
   for (const [, asset] of html.matchAll(/(?:src|href)="((?:js|css)\/[^\"]+)"/g)) {
     assert.equal((await get('/' + asset)).status, 200, asset);
   }
+  assert.equal((await get('/admin.html')).status, 200);
   for (const route of ['/server/index.js', '/data/leaderboard.sqlite', '/.env', '/%2e%2e%2fserver/index.js']) {
     assert.equal((await get(route)).status, 404, route);
   }

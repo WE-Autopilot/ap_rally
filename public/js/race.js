@@ -8,7 +8,7 @@
     const pctx = previewCanvas.getContext('2d');
 
     const player = new Vehicle(false, "P1", "#111111");
-    const botC1 = new Vehicle(true, "C1", "#555555");
+    const botC1 = new Vehicle(true, OPPONENT_NAME, "#555555");
 
     let isGameRunning = false;
     let isGamePaused = false;
@@ -17,8 +17,25 @@
     let lastFrameTime = 0;
     let physicsAccumulator = 0;
     const PHYSICS_STEP_MS = 1000 / 60;
+    const CAMERA_ZOOM_MAX = 1.28;
+    const CAMERA_ZOOM_MIN = 0.72;
+    const CAMERA_ZOOM_RESPONSE = 0.055;
+    let cameraZoom = CAMERA_ZOOM_MAX;
+
+    function updateCameraZoom() {
+      const speedRatio = Math.min(1, Math.abs(player.speed) / Math.max(player.maxSpeed, 0.001));
+      // Smoothstep keeps low-speed framing steady and widens naturally near top speed.
+      const zoomProgress = speedRatio * speedRatio * (3 - 2 * speedRatio);
+      const targetZoom = CAMERA_ZOOM_MAX + (CAMERA_ZOOM_MIN - CAMERA_ZOOM_MAX) * zoomProgress;
+      cameraZoom += (targetZoom - cameraZoom) * CAMERA_ZOOM_RESPONSE;
+    }
     let raceClockStart = 0;
     let pendingPlayerEntry = null;
+    let bestGhost = [];
+    let bestGhostTime = 0;
+    let ghostRecording = [];
+    let lastGhostSampleTime = -Infinity;
+    let ghostPlaybackIndex = 0;
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
@@ -103,6 +120,9 @@
       document.getElementById('pauseMenu').close();
       isGamePaused = false;
       pendingPlayerEntry = null;
+      ghostRecording = [];
+      lastGhostSampleTime = -Infinity;
+      ghostPlaybackIndex = 0;
       input.keys = {};
       initTrack(currentTrackIdx);
       const startP = trackSpline[0];
@@ -126,6 +146,7 @@
       raceClockStart = performance.now();
       lastFrameTime = raceClockStart;
       physicsAccumulator = 0;
+      cameraZoom = CAMERA_ZOOM_MAX;
       player.lapStartTime = raceClockStart;
       botC1.lapStartTime = raceClockStart;
 
@@ -134,6 +155,7 @@
       document.getElementById('hudTime').innerText = '00:00.000';
       document.getElementById('hudLap').innerText = `1 / ${CIRCUITS[currentTrackIdx].laps}`;
       document.getElementById('hudSpeed').innerText = '0 KM/H';
+      document.getElementById('hudHandling').innerText = 'GRIP';
       switchScreen('gameScreen');
       isGameRunning = true;
       audio.init();
@@ -224,18 +246,32 @@
       lastFrameTime = timestamp;
       while (physicsAccumulator + 1e-7 >= PHYSICS_STEP_MS) {
         player.update(1 / 60, pInput, trackSpline, rw);
-        botC1.update(1 / 60, botC1.computeAIInput(trackSpline), trackSpline, rw);
+        botC1.update(1 / 60, botC1.computeAIInput(trackSpline, rw, player), trackSpline, rw);
         resolveCarCollision(player, botC1);
+        updateCameraZoom();
         physicsAccumulator -= PHYSICS_STEP_MS;
       }
       audio.updateEngine(player.speed, player.maxSpeed);
+
+      const raceElapsed = Math.max(0, (timestamp - raceClockStart) / 1000);
+      if (!player.raceFinished && raceElapsed - lastGhostSampleTime >= 0.08) {
+        ghostRecording.push({
+          t: Math.round(raceElapsed * 1000) / 1000,
+          x: Math.round(player.x * 10) / 10,
+          y: Math.round(player.y * 10) / 10,
+          a: Math.round(player.angle * 1000) / 1000
+        });
+        lastGhostSampleTime = raceElapsed;
+      }
 
       // Render world relative to Player camera
       ctx.fillStyle = '#f2f2f2';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.save();
-      ctx.translate(canvas.width / 2 - player.x, canvas.height / 2 - player.y);
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(cameraZoom, cameraZoom);
+      ctx.translate(-player.x, -player.y);
 
       // 1. Render Tarmac Surface
       ctx.beginPath();
@@ -279,6 +315,7 @@
       ctx.stroke();
 
       // 4. Render Vehicles
+      renderBestGhost(raceElapsed);
       renderCar(botC1);
       renderCar(player);
 
@@ -289,6 +326,7 @@
       document.getElementById('hudTime').innerText = formatTime(nowSec);
       document.getElementById('hudLap').innerText = `${Math.min(player.lap, CIRCUITS[currentTrackIdx].laps)} / ${CIRCUITS[currentTrackIdx].laps}`;
       document.getElementById('hudSpeed').innerText = `${Math.floor(Math.abs(player.speed) * 20)} KM/H`;
+      document.getElementById('hudHandling').innerText = player.isDrifting ? 'DRIFT' : 'GRIP';
       document.getElementById('hudPos').innerText = (player.currentSplineIndex + (player.lap * trackSpline.length)) >=
         (botC1.currentSplineIndex + (botC1.lap * trackSpline.length)) ? "P1" : "P2";
 
@@ -339,6 +377,30 @@
       ctx.restore();
     }
 
+    function renderBestGhost(elapsed) {
+      if (bestGhost.length < 2 || elapsed > bestGhost[bestGhost.length - 1].t) return;
+      while (ghostPlaybackIndex < bestGhost.length - 2
+          && bestGhost[ghostPlaybackIndex + 1].t < elapsed) ghostPlaybackIndex++;
+      const from = bestGhost[ghostPlaybackIndex];
+      const to = bestGhost[ghostPlaybackIndex + 1];
+      if (!from || !to) return;
+      const progress = Math.max(0, Math.min(1, (elapsed - from.t) / Math.max(to.t - from.t, 0.001)));
+      const angleDelta = Math.atan2(Math.sin(to.a - from.a), Math.cos(to.a - from.a));
+      const ghost = {
+        x: from.x + (to.x - from.x) * progress,
+        y: from.y + (to.y - from.y) * progress,
+        angle: from.a + angleDelta * progress,
+        length: player.length,
+        width: player.width,
+        color: '#777777',
+        label: `BEST ${formatTime(bestGhostTime)}`
+      };
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      renderCar(ghost);
+      ctx.restore();
+    }
+
     function endRace() {
       cancelAnimationFrame(animationFrameId);
       isGameRunning = false;
@@ -347,15 +409,16 @@
       const playerWon = player.totalRaceTime <= botC1.totalRaceTime;
       const gap = Math.abs(player.totalRaceTime - botC1.totalRaceTime);
 
-      document.getElementById('lbResultTitle').innerText = playerWon ? "VICTORY: P1 FINISH" : "C1 FINISHED FIRST";
+      document.getElementById('lbResultTitle').innerText = playerWon ? "VICTORY: P1 FINISH" : `${OPPONENT_NAME} FINISHED FIRST`;
       document.getElementById('lbResultSummary').innerText =
-        `YOUR TIME: ${formatTime(player.totalRaceTime)} | C1 TIME: ${formatTime(botC1.totalRaceTime)} | GAP: ${gap.toFixed(3)}s`;
+        `YOUR TIME: ${formatTime(player.totalRaceTime)} | ${OPPONENT_NAME} TIME: ${formatTime(botC1.totalRaceTime)} | GAP: ${gap.toFixed(3)}s`;
 
       pendingPlayerEntry = {
         trackIndex: currentTrackIdx,
         time: player.totalRaceTime,
         gap: (playerWon ? "-" : "+") + gap.toFixed(3) + "s",
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        ghost: ghostRecording
       };
 
       document.getElementById('submitSection').style.display = 'block';

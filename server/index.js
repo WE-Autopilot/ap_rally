@@ -3,7 +3,7 @@ const { openDatabase } = require('./db/database');
 const { createApp } = require('./app');
 
 const database = openDatabase(config.databasePath);
-const server = createApp({ database, publicDir: config.publicDir });
+const server = createApp({ database, publicDir: config.publicDir, adminPassword: config.adminPassword });
 server.on('error', error => {
   console.error(error.message);
   database.close();

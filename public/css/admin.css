@@ -1,0 +1,54 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: #f7f7f7;
+  color: #111;
+  font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+}
+main { width: min(1120px, calc(100% - 32px)); margin: 36px auto 72px; }
+header, .section-heading, .form-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 4px; text-transform: uppercase; letter-spacing: 2px; }
+h2 { margin-bottom: 6px; font-size: 17px; text-transform: uppercase; letter-spacing: 1px; }
+p { color: #666; font-size: 12px; }
+a { color: #111; font-size: 12px; }
+.eyebrow { margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+.panel { margin-top: 24px; padding: 24px; border: 2px solid #111; background: #fff; }
+.login-panel { max-width: 520px; margin-left: auto; margin-right: auto; }
+label { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+input, button {
+  min-height: 40px;
+  border: 1px solid #111;
+  border-radius: 0;
+  background: #fff;
+  color: #111;
+  font: inherit;
+  font-size: 12px;
+  padding: 9px 11px;
+}
+input { width: 100%; }
+button { cursor: pointer; text-transform: uppercase; letter-spacing: .5px; }
+button:hover { background: #eee; }
+.form-row input { flex: 1; }
+.circuit-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 18px; }
+.circuit-grid button.active { background: #111; color: #fff; }
+.secondary { color: #555; }
+.danger { border-color: #a51414; color: #a51414; }
+.danger:hover { background: #a51414; color: #fff; }
+.status, .error { min-height: 16px; margin: 12px 0 0; }
+.error { color: #a51414; }
+.board { margin-top: 24px; }
+.board h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; }
+.table-wrap { overflow-x: auto; border: 1px solid #111; }
+table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 11px; }
+th, td { padding: 7px; border-bottom: 1px solid #ddd; text-align: left; }
+th { background: #eee; text-transform: uppercase; }
+td input { min-height: 34px; padding: 6px 8px; }
+.actions { display: flex; gap: 6px; }
+.empty { padding: 14px; border: 1px solid #ddd; color: #777; font-size: 11px; }
+@media (max-width: 700px) {
+  main { width: min(100% - 20px, 1120px); margin-top: 18px; }
+  header, .section-heading { align-items: flex-start; flex-direction: column; }
+  .panel { padding: 16px; }
+  .circuit-grid { grid-template-columns: 1fr; }
+}

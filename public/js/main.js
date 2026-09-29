@@ -20,20 +20,28 @@
       if (document.hidden) pauseRace();
     });
 
-    document.querySelectorAll('.track-btn').forEach(btn => {
-      btn.addEventListener('click', e => {
-        document.querySelectorAll('.track-btn').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        currentTrackIdx = parseInt(btn.getAttribute('data-track'), 10);
-        drawPreview(currentTrackIdx);
-      });
-    });
+    async function loadAdminCircuit() {
+      try {
+        const response = await fetch('/api/config');
+        if (!response.ok) throw new Error('Config unavailable');
+        const config = await response.json();
+        if (Number.isInteger(config.trackIndex) && CIRCUITS[config.trackIndex]) {
+          currentTrackIdx = config.trackIndex;
+        }
+      } catch (error) {
+        // Keep the last known circuit if the local server is briefly unavailable.
+      }
+      drawPreview(currentTrackIdx);
+    }
 
-    document.getElementById('btnStartGame').addEventListener('click', () => {
+    document.getElementById('btnStartGame').addEventListener('click', async () => {
+      await loadAdminCircuit();
+      await loadBestGhost(currentTrackIdx);
       startRace();
     });
 
-    document.getElementById('btnRestartRace').addEventListener('click', () => {
+    document.getElementById('btnRestartRace').addEventListener('click', async () => {
+      await loadBestGhost(currentTrackIdx);
       startRace();
     });
 
@@ -83,7 +91,7 @@
     }
 
     // Init
-    drawPreview(0);
+    loadAdminCircuit();
     fetchLeaderboardFromBackend(0);
 
     const controllerMenus = new ControllerMenus();
